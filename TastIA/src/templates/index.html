@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>TastIA</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+
+    <main class="relative min-h-screen overflow-hidden">
+
+        <div
+            class="absolute inset-0 bg-cover bg-center"
+            style="background-image: url('{{ url_for('static', filename='imagens/fundo.jpeg') }}');">
+        </div>
+
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-transparent"></div>
+
+        <div class="relative z-10 min-h-screen px-8 py-8 lg:px-16">
+
+            <img
+                src="{{ url_for('static', filename='imagens/logo.png') }}"
+                alt="Logo TastIA"
+                class="w-40 rounded-xl bg-white p-2 shadow-lg"
+            >
+
+            <section class="mt-28 max-w-2xl">
+
+                <p class="mb-4 text-sm font-semibold tracking-[0.2em] text-blue-400">
+                    INTELIGÊNCIA ARTIFICIAL PARA SUA COZINHA
+                </p>
+
+                <h1 class="text-5xl font-bold leading-tight text-white lg:text-6xl">
+                    Transforme seus ingredientes
+                    em receitas incríveis.
+                </h1>
+
+                <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-200">
+                    O <strong class="text-white">TastIA</strong> utiliza
+                    Inteligência Artificial para ajudar você a descobrir
+                    receitas a partir dos ingredientes que já possui em casa.
+                </p>
+
+                <p class="mt-4 max-w-xl text-base leading-relaxed text-slate-400">
+                    Fotografe seus ingredientes, diga o que deseja preparar
+                    e deixe a IA encontrar uma receita para você.
+                </p>
+
+                <div class="mt-8 flex gap-4">
+
+                    <a
+                        href="#"
+                        class="rounded-lg bg-blue-600 px-8 py-3 font-semibold
+                               text-white transition hover:bg-blue-700">
+                        Criar conta
+                    </a>
+
+                    <a
+                        href="#"
+                        class="rounded-lg border border-white px-8 py-3
+                               font-semibold text-white transition
+                               hover:bg-white hover:text-slate-900">
+                        Entrar
+                    </a>
+
+                </div>
+
+            </section>
+
+        </div>
+
+    </main>
+
+</body>
+
+</html>
