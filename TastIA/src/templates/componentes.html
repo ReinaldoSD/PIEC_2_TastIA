@@ -1,0 +1,42 @@
+{% macro mensagens() %}
+    {% with lista = get_flashed_messages(with_categories=true) %}
+        {% if lista %}
+            <div class="mx-auto mb-6 w-full max-w-4xl space-y-3">
+                {% for categoria, mensagem in lista %}
+                    {% if categoria == 'sucesso' %}
+                        <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
+                            ✓ {{ mensagem }}
+                        </div>
+                    {% elif categoria == 'erro' %}
+                        <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+                            ! {{ mensagem }}
+                        </div>
+                    {% else %}
+                        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-800">
+                            ℹ {{ mensagem }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+{% endmacro %}
+
+
+{% macro carregamento(mensagem='Processando, aguarde...') %}
+    <div class="flex flex-col items-center justify-center gap-3 py-8">
+        <div class="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"></div>
+        <p class="text-sm font-medium text-blue-800">{{ mensagem }}</p>
+    </div>
+{% endmacro %}
+
+
+{% macro botao(texto='Continuar', tipo='button', desabilitado=false) %}
+    <button
+        type="{{ tipo }}"
+        class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-md transition duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        {% if desabilitado %}disabled{% endif %}
+    >
+        {{ texto }}
+    </button>
+{% endmacro %}

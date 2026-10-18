@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Inventário | TastIA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body class="min-h-screen bg-blue-50 text-slate-800">
+
+    <header class="border-b border-blue-100 bg-white">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
+                <img src="{{ url_for('static', filename='imagens/logo.png') }}"
+                     alt="Logo TastIA"
+                     class="h-12 w-12 rounded-xl object-contain">
+
+                <div>
+                    <h1 class="text-2xl font-bold text-blue-700">TastIA</h1>
+                    <p class="text-xs text-slate-500">Seu assistente culinário</p>
+                </div>
+            </a>
+
+            <a href="{{ url_for('index') }}"
+               class="rounded-xl px-4 py-2 font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
+                <i class="fa-solid fa-arrow-left mr-2"></i>
+                Página inicial
+            </a>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-6 py-10">
+
+        <section class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-center">
+            <div>
+                <p class="mb-2 font-semibold text-blue-600">
+                    <i class="fa-solid fa-leaf mr-2"></i>
+                    ORGANIZE SUA COZINHA
+                </p>
+
+                <h2 class="text-3xl font-bold text-slate-800 md:text-4xl">
+                    Meu inventário
+                </h2>
+
+                <p class="mt-3 max-w-xl text-slate-500">
+                    Confira os ingredientes disponíveis em casa e aproveite
+                    melhor os alimentos que você já tem.
+                </p>
+            </div>
+
+            <a href="{{ url_for('inventario') }}"
+               class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">
+                <i class="fa-solid fa-plus"></i>
+                Adicionar ingrediente
+            </a>
+        </section>
+
+        <section class="mb-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+
+            <div class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Total de ingredientes</p>
+                        <h3 id="totalIngredientes" class="mt-2 text-3xl font-bold text-slate-800">0</h3>
+                    </div>
+
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-xl text-blue-600">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm text-slate-400">Itens cadastrados no inventário</p>
+            </div>
+
+            <div class="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Próximos do vencimento</p>
+                        <h3 id="totalVencimento" class="mt-2 text-3xl font-bold text-amber-600">0</h3>
+                    </div>
+
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-600">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm text-slate-400">Atenção às datas de validade</p>
+            </div>
+
+            <div class="rounded-2xl border border-green-100 bg-white p-6 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Categorias</p>
+                        <h3 id="totalCategorias" class="mt-2 text-3xl font-bold text-green-600">0</h3>
+                    </div>
+
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 text-xl text-green-600">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm text-slate-400">Tipos de alimentos armazenados</p>
+            </div>
+
+        </section>
+
+        <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
+
+            <div class="mb-6">
+                <h3 class="text-xl font-bold text-slate-800">Seus ingredientes</h3>
+                <p class="mt-1 text-sm text-slate-500">
+                    Pesquise e filtre os itens do seu inventário.
+                </p>
+            </div>
+
+            <div class="mb-6 flex flex-col gap-3 md:flex-row">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+
+                    <input id="busca"
+                           type="search"
+                           placeholder="Buscar ingrediente..."
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                </div>
+
+                <select id="filtroCategoria"
+                        class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                    <option value="">Todas as categorias</option>
+                    <option value="Frutas">Frutas</option>
+                    <option value="Verduras e legumes">Verduras e legumes</option>
+                    <option value="Laticínios">Laticínios</option>
+                    <option value="Grãos e cereais">Grãos e cereais</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+
+            <div id="listaIngredientes" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+                {% for item in itens %}
+                <article class="cartao-ingrediente rounded-2xl border border-slate-100 bg-slate-50 p-5 transition hover:border-blue-200 hover:shadow-md"
+                         data-nome="{{ item['nome']|lower }}"
+                         data-categoria="{{ item['categoria'] }}">
+
+                    <div class="mb-4 flex items-start justify-between">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-600">
+                            <i class="fa-solid fa-carrot"></i>
+                        </div>
+
+                        <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                            {{ item['categoria'] }}
+                        </span>
+                    </div>
+
+                    <h4 class="text-lg font-bold text-slate-800">{{ item['nome'] }}</h4>
+
+                    <p class="mt-2 text-sm text-slate-500">
+                        <i class="fa-solid fa-box mr-2 text-blue-500"></i>
+                        Quantidade: {{ item['quantidade'] }}
+                    </p>
+
+                    <p class="mt-2 text-sm text-slate-500">
+                        <i class="fa-regular fa-calendar mr-2 text-blue-500"></i>
+                        Validade:
+                        {% if item['validade'] %}
+                            {{ item['validade'] }}
+                        {% else %}
+                            Não informada
+                        {% endif %}
+                    </p>
+
+                    <form action="{{ url_for('excluir_ingrediente', item_id=item['id']) }}"
+                          method="POST"
+                          onsubmit="return confirm('Deseja realmente remover este ingrediente?')"
+                          class="mt-5 border-t border-slate-200 pt-4">
+
+                        <button type="submit"
+                                class="text-sm font-semibold text-red-500 transition hover:text-red-700">
+                            <i class="fa-regular fa-trash-can mr-2"></i>
+                            Remover ingrediente
+                        </button>
+                    </form>
+                </article>
+                {% endfor %}
+
+            </div>
+
+            <div id="mensagemVazia" class="hidden py-12 text-center">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl text-blue-500">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                </div>
+
+                <h4 class="mt-4 text-lg font-bold text-slate-700">
+                    Nenhum ingrediente encontrado
+                </h4>
+
+                <p class="mt-2 text-sm text-slate-500">
+                    Tente mudar a pesquisa ou adicione ingredientes ao inventário.
+                </p>
+            </div>
+
+            {% if not itens %}
+            <div class="py-12 text-center">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl text-blue-500">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                </div>
+
+                <h4 class="mt-4 text-lg font-bold text-slate-700">
+                    Seu inventário está vazio
+                </h4>
+
+                <p class="mt-2 text-sm text-slate-500">
+                    A tela de cadastro de ingredientes será criada na próxima etapa.
+                </p>
+            </div>
+            {% endif %}
+
+        </section>
+
+        <footer class="py-8 text-center text-sm text-slate-400">
+            TastIA — Mais criatividade, menos desperdício.
+        </footer>
+
+    </main>
+
+    <script>
+        const busca = document.getElementById('busca');
+        const filtroCategoria = document.getElementById('filtroCategoria');
+        const cartoes = [...document.querySelectorAll('.cartao-ingrediente')];
+        const mensagemVazia = document.getElementById('mensagemVazia');
+
+        function atualizarInventario() {
+            const termo = busca.value.toLowerCase().trim();
+            const categoria = filtroCategoria.value;
+            let visiveis = 0;
+            let proximos = 0;
+
+            cartoes.forEach(cartao => {
+                const nome = cartao.dataset.nome;
+                const categoriaItem = cartao.dataset.categoria;
+                const correspondeNome = nome.includes(termo);
+                const correspondeCategoria = !categoria || categoriaItem === categoria;
+                const mostrar = correspondeNome && correspondeCategoria;
+
+                cartao.classList.toggle('hidden', !mostrar);
+
+                if (mostrar) {
+                    visiveis++;
+
+                    const textos = cartao.querySelectorAll('p');
+                    const textoValidade = textos[1]?.textContent || '';
+                    const validade = textoValidade.match(/\d{4}-\d{2}-\d{2}/);
+
+                    if (validade) {
+                        const data = new Date(validade[0] + 'T00:00:00');
+                        const hoje = new Date();
+                        hoje.setHours(0, 0, 0, 0);
+
+                        const dias = (data - hoje) / (1000 * 60 * 60 * 24);
+
+                        if (dias >= 0 && dias <= 7) {
+                            proximos++;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('totalIngredientes').textContent = cartoes.length;
+            document.getElementById('totalCategorias').textContent =
+                new Set(cartoes.map(cartao => cartao.dataset.categoria)).size;
+            document.getElementById('totalVencimento').textContent = proximos;
+
+            mensagemVazia.classList.toggle('hidden', visiveis !== 0);
+        }
+
+        busca.addEventListener('input', atualizarInventario);
+        filtroCategoria.addEventListener('change', atualizarInventario);
+        atualizarInventario();
+    </script>
+
+</body>
+</html>

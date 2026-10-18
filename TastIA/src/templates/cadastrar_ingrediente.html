@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Ingrediente | TastIA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body class="min-h-screen bg-blue-50 text-slate-800">
+
+    <header class="border-b border-blue-100 bg-white">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
+                <img src="{{ url_for('static', filename='imagens/logo.png') }}"
+                     alt="Logo TastIA"
+                     class="h-12 w-12 rounded-xl object-contain">
+
+                <div>
+                    <h1 class="text-2xl font-bold text-blue-700">TastIA</h1>
+                    <p class="text-xs text-slate-500">Seu assistente culinário</p>
+                </div>
+            </a>
+
+            <a href="{{ url_for('inventario') }}"
+               class="rounded-xl px-4 py-2 font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
+                <i class="fa-solid fa-arrow-left mr-2"></i>
+                Voltar ao inventário
+            </a>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-3xl px-6 py-12">
+
+        <div class="mb-8 text-center">
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl text-blue-600">
+                <i class="fa-solid fa-carrot"></i>
+            </div>
+
+            <h2 class="text-3xl font-bold text-slate-800">
+                Cadastrar ingrediente
+            </h2>
+
+            <p class="mt-3 text-slate-500">
+                Registre os alimentos que você tem em casa e organize sua cozinha.
+            </p>
+        </div>
+
+        <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
+
+            <form id="formIngrediente" class="space-y-6">
+
+                <div>
+                    <label for="nome" class="mb-2 block text-sm font-semibold text-slate-700">
+                        Nome do ingrediente
+                    </label>
+
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        placeholder="Ex.: Arroz, tomate, leite..."
+                        required
+                        maxlength="100"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                </div>
+
+                <div>
+                    <label for="categoria" class="mb-2 block text-sm font-semibold text-slate-700">
+                        Categoria
+                    </label>
+
+                    <select
+                        id="categoria"
+                        name="categoria"
+                        required
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+
+                        <option value="">Selecione uma categoria</option>
+                        <option value="Frutas">Frutas</option>
+                        <option value="Verduras e legumes">Verduras e legumes</option>
+                        <option value="Laticínios">Laticínios</option>
+                        <option value="Grãos e cereais">Grãos e cereais</option>
+                        <option value="Carnes">Carnes</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="quantidade" class="mb-2 block text-sm font-semibold text-slate-700">
+                        Quantidade
+                    </label>
+
+                    <input
+                        type="text"
+                        id="quantidade"
+                        name="quantidade"
+                        placeholder="Ex.: 2 unidades, 500 g, 1 litro"
+                        required
+                        maxlength="50"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                </div>
+
+                <div>
+                    <label for="validade" class="mb-2 block text-sm font-semibold text-slate-700">
+                        Data de validade
+                        <span class="font-normal text-slate-400">(opcional)</span>
+                    </label>
+
+                    <input
+                        type="date"
+                        id="validade"
+                        name="validade"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                </div>
+
+                <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
+
+                <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+                    <button
+                        type="submit"
+                        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-md transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
+                        <i class="fa-solid fa-plus"></i>
+                        Cadastrar ingrediente
+                    </button>
+
+                    <a
+                        href="{{ url_for('inventario') }}"
+                        class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-6 py-3 font-semibold text-slate-600 transition hover:bg-slate-50">
+                        Cancelar
+                    </a>
+                </div>
+
+            </form>
+
+        </section>
+
+        <p class="mt-6 text-center text-sm text-slate-400">
+            TastIA — Mais criatividade, menos desperdício.
+        </p>
+
+    </main>
+
+    <script>
+        const formulario = document.getElementById('formIngrediente');
+        const mensagem = document.getElementById('mensagem');
+
+        formulario.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800';
+            mensagem.textContent = 'Posteriormente vai ser implementado :0';
+        });
+    </script>
+
+</body>
+</html>
