@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página inicial | TastIA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-white">
+    <div class="flex min-h-screen">
+        {% include 'sidebar.html' %}
+
+        <main class="ml-20 min-w-0 flex-1 px-6 py-8 transition-all duration-300 md:px-10 lg:px-14">
+            <header class="mb-10">
+                <p class="mb-2 text-sm font-semibold tracking-widest text-emerald-400">
+                    SEU ASSISTENTE CULINÁRIO
+                </p>
+                <h1 class="text-3xl font-bold md:text-4xl">
+                    Olá{% if nome_usuario %}, {{ nome_usuario }}{% endif %}! Vamos cozinhar?
+                </h1>
+                <p class="mt-2 text-slate-400">
+                    Descubra novas possibilidades com seus ingredientes.
+                </p>
+            </header>
+
+            <section class="mb-10 overflow-hidden rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/15 via-slate-900 to-sky-500/10 p-7 md:p-10">
+                <div class="max-w-2xl">
+                    <span class="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm text-emerald-300">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        Cozinhe com inteligência
+                    </span>
+
+                    <h2 class="mt-5 text-3xl font-bold leading-tight md:text-4xl">
+                        O que vamos preparar hoje?
+                    </h2>
+
+                    <p class="mt-4 leading-relaxed text-slate-300">
+                        Conte o que você tem na geladeira ou diga o que está com vontade de comer. A TastIA ajuda você a encontrar uma receita que combine com seu momento.
+                    </p>
+
+                    <a href="{{ url_for('receitas') }}" class="mt-7 inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300">
+                        Descobrir receitas
+                    </a>
+                </div>
+            </section>
+
+            <section class="mb-10">
+                <div class="mb-5">
+                    <h2 class="text-2xl font-bold">Comece por aqui</h2>
+                    <p class="mt-1 text-slate-400">
+                        Escolha como deseja encontrar sua próxima receita.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <article class="rounded-2xl border border-white/10 bg-slate-900 p-6 transition hover:-translate-y-1 hover:border-emerald-400/50">
+                        <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-400/10 text-2xl text-emerald-400">
+                            📷
+                        </div>
+                        <h3 class="text-xl font-semibold">Seus ingredientes</h3>
+                        <p class="mt-2 leading-relaxed text-slate-400">
+                            Consulte os ingredientes cadastrados e organize o que você tem disponível.
+                        </p>
+                        <a href="{{ url_for('inventario') }}" class="mt-5 inline-block rounded-lg border border-emerald-400/40 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400 hover:text-slate-950">
+                            Ver inventário
+                        </a>
+                    </article>
+
+                    <article class="rounded-2xl border border-white/10 bg-slate-900 p-6 transition hover:-translate-y-1 hover:border-sky-400/50">
+                        <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-400/10 text-2xl text-sky-300">
+                            ✨
+                        </div>
+                        <h3 class="text-xl font-semibold">Pedir uma receita</h3>
+                        <p class="mt-2 leading-relaxed text-slate-400">
+                            Escreva o que deseja preparar, incluindo o tempo disponível ou suas preferências.
+                        </p>
+                        <a href="{{ url_for('receitas') }}" class="mt-5 inline-block rounded-lg border border-sky-400/40 px-4 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-400 hover:text-slate-950">
+                            Criar pedido
+                        </a>
+                    </article>
+                </div>
+            </section>
+
+            <section class="mb-10">
+                <div class="rounded-2xl border border-white/10 bg-slate-900 p-6 md:p-8">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <div class="mb-3 flex items-center gap-2 text-sky-300">
+                                <span>🥤</span>
+                                <span class="font-semibold">Harmonização</span>
+                            </div>
+                            <h2 class="text-2xl font-bold">
+                                Que tal uma bebida para acompanhar?
+                            </h2>
+                            <p class="mt-2 text-slate-400">
+                                Encontre sugestões de bebidas para acompanhar sua refeição.
+                            </p>
+                        </div>
+
+                        <a href="{{ url_for('bebidas') }}" class="shrink-0 rounded-xl bg-sky-400 px-5 py-3 text-center font-semibold text-slate-950 transition hover:bg-sky-300">
+                            Ver sugestões
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="border-t border-white/10 py-6 text-center text-sm text-slate-500">
+                TastIA — Inteligência Artificial para sua cozinha.
+                <a href="{{ url_for('logout') }}" class="ml-2 text-emerald-300 hover:underline">Sair da conta</a>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

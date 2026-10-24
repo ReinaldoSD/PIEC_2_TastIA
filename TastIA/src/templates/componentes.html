@@ -22,14 +22,12 @@
     {% endwith %}
 {% endmacro %}
 
-
 {% macro carregamento(mensagem='Processando, aguarde...') %}
     <div class="flex flex-col items-center justify-center gap-3 py-8">
         <div class="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"></div>
         <p class="text-sm font-medium text-blue-800">{{ mensagem }}</p>
     </div>
 {% endmacro %}
-
 
 {% macro botao(texto='Continuar', tipo='button', desabilitado=false) %}
     <button

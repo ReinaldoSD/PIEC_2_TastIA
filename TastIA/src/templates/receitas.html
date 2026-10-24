@@ -1,185 +1,81 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sugestão de Receitas | TastIA</title>
+    <title>Receitas | TastIA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body class="min-h-screen bg-blue-50 text-slate-800">
+    <div class="flex min-h-screen">
+        {% include 'sidebar.html' %}
 
-    <header class="border-b border-blue-100 bg-white">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
-                <img src="{{ url_for('static', filename='imagens/logo.png') }}"
-                     alt="Logo TastIA"
-                     class="h-12 w-12 rounded-xl object-contain">
-
-                <div>
-                    <h1 class="text-2xl font-bold text-blue-700">TastIA</h1>
-                    <p class="text-xs text-slate-500">Seu assistente culinário</p>
-                </div>
-            </a>
-
-            <a href="{{ url_for('inventario') }}"
-               class="rounded-xl px-4 py-2 font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
-                <i class="fa-solid fa-boxes-stacked mr-2"></i>
-                Meu inventário
-            </a>
-        </div>
-    </header>
-
-    <main class="mx-auto max-w-5xl px-6 py-12">
-
-        <section class="mb-10 text-center">
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl text-blue-600">
-                <i class="fa-solid fa-utensils"></i>
-            </div>
-
-            <h2 class="text-3xl font-bold md:text-4xl">
-                O que vamos cozinhar hoje?
-            </h2>
-
-            <p class="mx-auto mt-3 max-w-2xl text-slate-500">
-                Conte o que você está com vontade de comer e descubra receitas
-                que combinam com os ingredientes que tem em casa.
-            </p>
-        </section>
-
-        <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-
-            <form id="formReceita" class="space-y-6">
-
-                <div>
-                    <label for="pedido" class="mb-2 block font-semibold">
-                        O que você gostaria de preparar?
-                    </label>
-
-                    <textarea
-                        id="pedido"
-                        name="pedido"
-                        rows="3"
-                        maxlength="500"
-                        required
-                        placeholder="Ex.: Quero uma comida leve, fácil de preparar e que fique pronta em 15 minutos."
-                        class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
-                </div>
-
-                <div class="grid gap-6 md:grid-cols-2">
-
-                    <div>
-                        <label for="tempo" class="mb-2 block font-semibold">
-                            <i class="fa-regular fa-clock mr-2 text-blue-600"></i>
-                            Tempo de preparo
-                        </label>
-
-                        <select
-                            id="tempo"
-                            name="tempo"
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-
-                            <option value="15">Até 15 minutos</option>
-                            <option value="30">Até 30 minutos</option>
-                            <option value="45">Até 45 minutos</option>
-                            <option value="60">Até 1 hora</option>
-                            <option value="qualquer">Sem limite de tempo</option>
-                        </select>
+        <main class="ml-[84px] min-w-0 flex-1 px-6 py-10 md:px-10">
+            <div class="mx-auto max-w-5xl">
+                <section class="mb-10 text-center">
+                    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl text-blue-600">
+                        <i class="fa-solid fa-utensils"></i>
                     </div>
-
-                    <div>
-                        <label for="dificuldade" class="mb-2 block font-semibold">
-                            <i class="fa-solid fa-signal mr-2 text-blue-600"></i>
-                            Dificuldade
-                        </label>
-
-                        <select
-                            id="dificuldade"
-                            name="dificuldade"
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-
-                            <option value="qualquer">Qualquer nível</option>
-                            <option value="facil">Fácil</option>
-                            <option value="media">Média</option>
-                            <option value="dificil">Difícil</option>
-                        </select>
-                    </div>
-
-                </div>
-
-                <div>
-                    <label for="ingredientes" class="mb-2 block font-semibold">
-                        <i class="fa-solid fa-carrot mr-2 text-blue-600"></i>
-                        Ingredientes que você tem
-                    </label>
-
-                    <textarea
-                        id="ingredientes"
-                        name="ingredientes"
-                        rows="3"
-                        maxlength="1000"
-                        placeholder="Ex.: arroz, ovos, tomate, cebola..."
-                        class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
-
-                    <p class="mt-2 text-sm text-slate-400">
-                        Informe os ingredientes separados por vírgulas.
+                    <h1 class="text-3xl font-bold md:text-4xl">O que vamos cozinhar hoje?</h1>
+                    <p class="mx-auto mt-3 max-w-2xl text-slate-500">
+                        Conte o que você está com vontade de comer e descubra receitas que combinam com seus ingredientes.
                     </p>
-                </div>
+                </section>
 
-                <div>
-                    <label for="restricoes" class="mb-2 block font-semibold">
-                        Preferências ou restrições alimentares
-                        <span class="font-normal text-slate-400">(opcional)</span>
-                    </label>
+                <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
+                    <form id="formReceita" class="space-y-6">
+                        <div>
+                            <label for="pedido" class="mb-2 block font-semibold">O que você gostaria de preparar?</label>
+                            <textarea id="pedido" rows="3" maxlength="500" required placeholder="Ex.: Quero uma comida leve e fácil de preparar em 15 minutos." class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
+                        </div>
 
-                    <input
-                        type="text"
-                        id="restricoes"
-                        name="restricoes"
-                        maxlength="300"
-                        placeholder="Ex.: vegetariana, sem lactose..."
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-                </div>
+                        <div>
+                            <label for="tempo" class="mb-2 block font-semibold">Tempo de preparo</label>
+                            <select id="tempo" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                                <option>Até 15 minutos</option>
+                                <option>Até 30 minutos</option>
+                                <option>Até 45 minutos</option>
+                                <option>Até 1 hora</option>
+                                <option>Sem limite de tempo</option>
+                            </select>
+                        </div>
 
-                <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
+                        <div>
+                            <label for="ingredientes" class="mb-2 block font-semibold">Ingredientes que você tem</label>
+                            <textarea id="ingredientes" rows="3" maxlength="1000" placeholder="Ex.: arroz, ovos, tomate, cebola..." class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
+                            <p class="mt-2 text-sm text-slate-400">Separe os ingredientes por vírgulas.</p>
+                        </div>
 
-                <button
-                    type="submit"
-                    class="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white shadow-md transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    Sugerir uma receita
-                </button>
+                        <div>
+                            <label for="restricoes" class="mb-2 block font-semibold">Preferências ou restrições alimentares (opcional)</label>
+                            <input id="restricoes" type="text" maxlength="300" placeholder="Ex.: vegetariana, sem lactose..." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                        </div>
 
-            </form>
+                        <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
 
-        </section>
+                        <button type="submit" class="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white transition hover:bg-blue-700">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            Organizar pedido
+                        </button>
+                    </form>
+                </section>
 
-        <section id="resultado" class="mt-8 hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-            <div class="mb-4 flex items-center gap-3">
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-xl text-green-600">
-                    <i class="fa-solid fa-book-open"></i>
-                </div>
+                <section id="resultado" class="mt-8 hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
+                    <h2 class="mb-4 text-xl font-bold">Resumo da solicitação</h2>
+                    <div id="resumo" class="space-y-3 text-slate-600"></div>
+                    <p class="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
+                        Esta é uma prévia visual. A geração automática de receitas ainda precisa ser conectada à inteligência artificial.
+                    </p>
+                </section>
 
-                <div>
-                    <h3 class="text-xl font-bold">Sua solicitação</h3>
-                    <p class="text-sm text-slate-500">Resumo das suas preferências</p>
-                </div>
+                <footer class="py-8 text-center text-sm text-slate-400">
+                    TastIA — Mais criatividade, menos desperdício.
+                </footer>
             </div>
-
-            <div id="resumo" class="space-y-3 text-slate-600"></div>
-
-            <p class="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
-                Prévia. Posteriormente vai ser implementado :0
-            </p>
-        </section>
-
-        <footer class="py-8 text-center text-sm text-slate-400">
-            TastIA — Mais criatividade, menos desperdício.
-        </footer>
-
-    </main>
+        </main>
+    </div>
 
     <script>
         const formulario = document.getElementById('formReceita');
@@ -191,10 +87,6 @@
             event.preventDefault();
 
             const pedido = document.getElementById('pedido').value.trim();
-            const tempo = document.getElementById('tempo');
-            const dificuldade = document.getElementById('dificuldade');
-            const ingredientes = document.getElementById('ingredientes').value.trim();
-            const restricoes = document.getElementById('restricoes').value.trim();
 
             if (!pedido) {
                 mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
@@ -203,16 +95,15 @@
             }
 
             mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800';
-            mensagem.textContent = 'Sua solicitação foi organizada para a prévia visual. A inteligência artificial ainda não está conectada a este formulário.';
+            mensagem.textContent = 'Pedido organizado. A geração automática ainda precisa ser conectada.';
 
             resumo.replaceChildren();
 
             const dados = [
                 ['Seu pedido', pedido],
-                ['Tempo de preparo', tempo.options[tempo.selectedIndex].text],
-                ['Dificuldade', dificuldade.options[dificuldade.selectedIndex].text],
-                ['Ingredientes', ingredientes || 'Não informados'],
-                ['Preferências ou restrições', restricoes || 'Não informadas']
+                ['Tempo de preparo', document.getElementById('tempo').value],
+                ['Ingredientes', document.getElementById('ingredientes').value.trim() || 'Não informados'],
+                ['Preferências ou restrições', document.getElementById('restricoes').value.trim() || 'Não informadas']
             ];
 
             dados.forEach(function(item) {
@@ -234,6 +125,5 @@
             resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     </script>
-
 </body>
 </html>

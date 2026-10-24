@@ -1,181 +1,93 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sugestão de Bebidas | TastIA</title>
+    <title>Bebidas | TastIA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body class="min-h-screen bg-blue-50 text-slate-800">
+    <div class="flex min-h-screen">
+        {% include 'sidebar.html' %}
 
-    <header class="border-b border-blue-100 bg-white">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
-                <img src="{{ url_for('static', filename='imagens/logo.png') }}"
-                     alt="Logo TastIA"
-                     class="h-12 w-12 rounded-xl object-contain">
-
-                <div>
-                    <h1 class="text-2xl font-bold text-blue-700">TastIA</h1>
-                    <p class="text-xs text-slate-500">Seu assistente culinário</p>
-                </div>
-            </a>
-
-            <a href="{{ url_for('inventario') }}"
-               class="rounded-xl px-4 py-2 font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
-                <i class="fa-solid fa-boxes-stacked mr-2"></i>
-                Meu inventário
-            </a>
-        </div>
-    </header>
-
-    <main class="mx-auto max-w-5xl px-6 py-12">
-
-        <section class="mb-10 text-center">
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl text-blue-600">
-                <i class="fa-solid fa-glass-water"></i>
-            </div>
-
-            <h2 class="text-3xl font-bold md:text-4xl">
-                Uma bebida para acompanhar?
-            </h2>
-
-            <p class="mx-auto mt-3 max-w-2xl text-slate-500">
-                Informe sua refeição e suas preferências para explorar combinações
-                de bebidas que podem acompanhar seu prato.
-            </p>
-        </section>
-
-        <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-
-            <form id="formBebida" class="space-y-6">
-
-                <div>
-                    <label for="refeicao" class="mb-2 block font-semibold">
-                        <i class="fa-solid fa-utensils mr-2 text-blue-600"></i>
-                        Qual refeição você vai preparar?
-                    </label>
-
-                    <input
-                        type="text"
-                        id="refeicao"
-                        name="refeicao"
-                        maxlength="200"
-                        required
-                        placeholder="Ex.: macarrão ao molho de tomate"
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-                </div>
-
-                <div>
-                    <label for="ingredientes" class="mb-2 block font-semibold">
-                        Ingredientes principais
-                        <span class="font-normal text-slate-400">(opcional)</span>
-                    </label>
-
-                    <textarea
-                        id="ingredientes"
-                        name="ingredientes"
-                        rows="3"
-                        maxlength="500"
-                        placeholder="Ex.: tomate, manjericão, queijo..."
-                        class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
-                </div>
-
-                <div class="grid gap-6 md:grid-cols-2">
-
-                    <div>
-                        <label for="tipo" class="mb-2 block font-semibold">
-                            Tipo de bebida
-                        </label>
-
-                        <select
-                            id="tipo"
-                            name="tipo"
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-
-                            <option value="qualquer">Qualquer tipo</option>
-                            <option value="sucos">Sucos naturais</option>
-                            <option value="vitaminas">Vitaminas</option>
-                            <option value="chás">Chás e infusões</option>
-                            <option value="sem alcool">Bebidas sem álcool</option>
-                            <option value="água">Águas saborizadas</option>
-                        </select>
+        <main class="ml-20 min-w-0 flex-1 px-6 py-10 md:px-10">
+            <div class="mx-auto max-w-5xl">
+                <section class="mb-10 text-center">
+                    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-3xl text-emerald-600">
+                        <i class="fa-solid fa-mug-hot"></i>
                     </div>
+                    <h1 class="text-3xl font-bold md:text-4xl">Uma bebida para acompanhar</h1>
+                    <p class="mx-auto mt-3 max-w-2xl text-slate-500">
+                        Informe qual refeição você vai preparar e escolha suas preferências para encontrar uma combinação.
+                    </p>
+                </section>
 
-                    <div>
-                        <label for="temperatura" class="mb-2 block font-semibold">
-                            Temperatura preferida
-                        </label>
+                <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
+                    <form id="formBebida" class="space-y-6">
+                        <div>
+                            <label for="refeicao" class="mb-2 block font-semibold">Qual refeição você vai preparar?</label>
+                            <input id="refeicao" type="text" maxlength="300" required placeholder="Ex.: macarrão com molho de tomate" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                        </div>
 
-                        <select
-                            id="temperatura"
-                            name="temperatura"
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                        <div>
+                            <label for="ingredientes" class="mb-2 block font-semibold">Ingredientes principais (opcional)</label>
+                            <textarea id="ingredientes" rows="3" maxlength="1000" placeholder="Ex.: tomate, manjericão, queijo..." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"></textarea>
+                        </div>
 
-                            <option value="qualquer">Tanto faz</option>
-                            <option value="gelada">Gelada</option>
-                            <option value="natural">Temperatura ambiente</option>
-                            <option value="quente">Quente</option>
-                        </select>
-                    </div>
+                        <div class="grid gap-6 md:grid-cols-2">
+                            <div>
+                                <label for="tipo" class="mb-2 block font-semibold">Tipo de bebida</label>
+                                <select id="tipo" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <option>Qualquer tipo</option>
+                                    <option>Sucos</option>
+                                    <option>Vitaminas</option>
+                                    <option>Chás e infusões</option>
+                                    <option>Bebidas cremosas</option>
+                                    <option>Bebidas sem álcool</option>
+                                </select>
+                            </div>
 
-                </div>
+                            <div>
+                                <label for="temperatura" class="mb-2 block font-semibold">Temperatura</label>
+                                <select id="temperatura" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <option>Qualquer temperatura</option>
+                                    <option>Gelada</option>
+                                    <option>Natural</option>
+                                    <option>Quente</option>
+                                </select>
+                            </div>
+                        </div>
 
-                <div>
-                    <label for="preferencias" class="mb-2 block font-semibold">
-                        Outras preferências
-                        <span class="font-normal text-slate-400">(opcional)</span>
-                    </label>
+                        <div>
+                            <label for="preferencias" class="mb-2 block font-semibold">Outras preferências (opcional)</label>
+                            <input id="preferencias" type="text" maxlength="300" placeholder="Ex.: pouco açúcar, sem lactose..." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        </div>
 
-                    <input
-                        type="text"
-                        id="preferencias"
-                        name="preferencias"
-                        maxlength="300"
-                        placeholder="Ex.: pouco açúcar, ingredientes simples..."
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-                </div>
+                        <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
 
-                <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
+                        <button type="submit" class="flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-600 px-6 py-4 font-semibold text-white transition hover:bg-emerald-700">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            Organizar preferências
+                        </button>
+                    </form>
+                </section>
 
-                <button
-                    type="submit"
-                    class="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white shadow-md transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    Sugerir bebidas
-                </button>
+                <section id="resultado" class="mt-8 hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
+                    <h2 class="mb-4 text-xl font-bold">Resumo das preferências</h2>
+                    <div id="resumo" class="space-y-3 text-slate-600"></div>
+                    <p class="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                        Esta é uma prévia visual. As recomendações automáticas de bebidas ainda precisam ser conectadas à inteligência artificial.
+                    </p>
+                </section>
 
-            </form>
-
-        </section>
-
-        <section id="resultado" class="mt-8 hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-            <div class="mb-4 flex items-center gap-3">
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-xl text-green-600">
-                    <i class="fa-solid fa-mug-hot"></i>
-                </div>
-
-                <div>
-                    <h3 class="text-xl font-bold">Resumo das preferências</h3>
-                    <p class="text-sm text-slate-500">Confira as opções que você selecionou.</p>
-                </div>
+                <footer class="py-8 text-center text-sm text-slate-400">
+                    TastIA — Descubra novas combinações.
+                </footer>
             </div>
-
-            <div id="resumo" class="space-y-3 text-slate-600"></div>
-
-            <p class="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
-                Prévia. Posteriormente vai ser implementado :0
-            </p>
-        </section>
-
-        <footer class="py-8 text-center text-sm text-slate-400">
-            TastIA — Mais criatividade, menos desperdício.
-        </footer>
-
-    </main>
+        </main>
+    </div>
 
     <script>
         const formulario = document.getElementById('formBebida');
@@ -187,10 +99,6 @@
             event.preventDefault();
 
             const refeicao = document.getElementById('refeicao').value.trim();
-            const ingredientes = document.getElementById('ingredientes').value.trim();
-            const tipo = document.getElementById('tipo');
-            const temperatura = document.getElementById('temperatura');
-            const preferencias = document.getElementById('preferencias').value.trim();
 
             if (!refeicao) {
                 mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
@@ -199,16 +107,16 @@
             }
 
             mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800';
-            mensagem.textContent = 'Suas preferências foram organizadas para a prévia visual. As recomendações automáticas ainda não estão conectadas.';
+            mensagem.textContent = 'Preferências organizadas. As recomendações automáticas ainda precisam ser conectadas.';
 
             resumo.replaceChildren();
 
             const dados = [
                 ['Refeição', refeicao],
-                ['Ingredientes principais', ingredientes || 'Não informados'],
-                ['Tipo de bebida', tipo.options[tipo.selectedIndex].text],
-                ['Temperatura', temperatura.options[temperatura.selectedIndex].text],
-                ['Outras preferências', preferencias || 'Não informadas']
+                ['Ingredientes principais', document.getElementById('ingredientes').value.trim() || 'Não informados'],
+                ['Tipo de bebida', document.getElementById('tipo').value],
+                ['Temperatura', document.getElementById('temperatura').value],
+                ['Outras preferências', document.getElementById('preferencias').value.trim() || 'Não informadas']
             ];
 
             dados.forEach(function(item) {
@@ -230,6 +138,5 @@
             resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     </script>
-
 </body>
 </html>

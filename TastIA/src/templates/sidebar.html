@@ -1,0 +1,398 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+    .tastia-sidebar {
+        font-family: 'Inter', sans-serif;
+        width: 84px;
+        transition: width .25s ease;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tastia-sidebar::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+
+    .tastia-sidebar:hover,
+    .tastia-sidebar:focus-within {
+        width: 264px;
+    }
+
+    .tastia-sidebar .sidebar-text,
+    .tastia-sidebar .sidebar-subtitle,
+    .tastia-sidebar .sidebar-section {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .15s ease;
+        white-space: nowrap;
+    }
+
+    .tastia-sidebar:hover .sidebar-text,
+    .tastia-sidebar:focus-within .sidebar-text,
+    .tastia-sidebar:hover .sidebar-subtitle,
+    .tastia-sidebar:focus-within .sidebar-subtitle,
+    .tastia-sidebar:hover .sidebar-section,
+    .tastia-sidebar:focus-within .sidebar-section {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: .08s;
+    }
+
+    .tastia-sidebar .sidebar-brand {
+        justify-content: center;
+    }
+
+    .tastia-sidebar:hover .sidebar-brand,
+    .tastia-sidebar:focus-within .sidebar-brand {
+        justify-content: flex-start;
+    }
+
+    .tastia-link {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 15px;
+        min-height: 48px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        color: #cbd5e1;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: background .2s ease, color .2s ease;
+    }
+
+    .tastia-link:hover {
+        background: rgba(255, 255, 255, .09);
+        color: white;
+    }
+
+    .tastia-link.ativo {
+        background: linear-gradient(100deg, #2563eb, #0284c7);
+        color: white;
+        box-shadow: 0 6px 18px rgba(37, 99, 235, .2);
+    }
+
+    .tastia-link .icone {
+        display: flex;
+        flex: 0 0 26px;
+        width: 26px;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+    }
+
+    .tastia-sidebar:not(:hover):not(:focus-within) .tastia-link {
+        justify-content: center;
+        gap: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .tastia-sidebar:not(:hover):not(:focus-within) .tastia-link .sidebar-text {
+        display: none;
+    }
+
+    .tastia-sidebar .sidebar-footer {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .tastia-sidebar .sidebar-user {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: 56px;
+        height: 64px;
+        min-width: 56px;
+        box-sizing: border-box;
+        margin: 0 auto 16px;
+        padding: 0;
+        overflow: hidden;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .06);
+        transition: width .25s ease, height .25s ease, background .2s ease;
+    }
+
+    .tastia-sidebar .sidebar-user > div:first-child {
+        display: flex;
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tastia-sidebar .sidebar-user > .sidebar-text {
+        display: none;
+        min-width: 0;
+    }
+
+    .tastia-sidebar:hover .sidebar-user,
+    .tastia-sidebar:focus-within .sidebar-user {
+        justify-content: flex-start;
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        padding: 12px;
+        margin: 0 0 16px;
+    }
+
+    .tastia-sidebar:hover .sidebar-user > .sidebar-text,
+    .tastia-sidebar:focus-within .sidebar-user > .sidebar-text {
+        display: block;
+    }
+
+    @media (max-width: 767px) {
+        .tastia-sidebar {
+            width: 264px;
+            transform: translateX(-100%);
+            overflow-y: auto;
+            transition: transform .25s ease;
+        }
+
+        .tastia-sidebar.menu-aberto {
+            width: 264px;
+            transform: translateX(0);
+        }
+
+        .tastia-sidebar .sidebar-text,
+        .tastia-sidebar .sidebar-subtitle,
+        .tastia-sidebar .sidebar-section {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tastia-sidebar .sidebar-brand {
+            justify-content: flex-start;
+        }
+
+        .tastia-sidebar .tastia-link,
+        .tastia-sidebar:not(:hover):not(:focus-within) .tastia-link {
+            justify-content: flex-start;
+            gap: 15px;
+            padding: 12px 16px;
+        }
+
+        .tastia-sidebar .tastia-link .sidebar-text,
+        .tastia-sidebar:not(:hover):not(:focus-within) .tastia-link .sidebar-text {
+            display: inline;
+        }
+
+        .tastia-sidebar .sidebar-user,
+        .tastia-sidebar:hover .sidebar-user,
+        .tastia-sidebar:focus-within .sidebar-user {
+            justify-content: flex-start;
+            width: 100%;
+            height: auto;
+            min-width: 0;
+            padding: 12px;
+            margin: 0 0 16px;
+        }
+
+        .tastia-sidebar .sidebar-user > .sidebar-text {
+            display: block;
+        }
+    }
+
+    .tastia-modal {
+        animation: modalEntrada .2s ease-out;
+    }
+
+    @keyframes modalEntrada {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+</style>
+
+<header class="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='imagens/logo.png') }}" alt="TastIA" class="h-10 w-10 rounded-xl object-contain">
+        <span class="text-xl font-extrabold text-slate-800">Tast<span class="text-blue-600">IA</span></span>
+    </a>
+
+    <button type="button" id="tastia-abrir-menu" aria-label="Abrir menu" class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-blue-50 hover:text-blue-600">
+        <i class="fa-solid fa-bars text-xl"></i>
+    </button>
+</header>
+
+<div id="tastia-overlay" class="fixed inset-0 z-40 hidden bg-slate-950/50 md:hidden"></div>
+
+<aside id="tastia-sidebar" class="tastia-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/5 bg-slate-950 py-6 text-white shadow-2xl">
+
+    <div class="sidebar-brand mb-9 flex h-12 items-center gap-3 px-4">
+        <a href="{{ url_for('dashboard') }}" class="flex min-w-0 items-center gap-3">
+            <img src="{{ url_for('static', filename='imagens/logo.png') }}" alt="Logo TastIA" class="h-11 w-11 shrink-0 rounded-xl bg-white object-contain p-1">
+            <div class="sidebar-text">
+                <span class="block text-2xl font-extrabold">Tast<span class="text-sky-400">IA</span></span>
+                <span class="sidebar-subtitle block text-[10px] uppercase tracking-wider text-slate-400">Sua cozinha inteligente</span>
+            </div>
+        </a>
+    </div>
+
+    <div class="sidebar-section mb-3 px-6 text-[10px] font-bold uppercase tracking-[.2em] text-slate-500">
+        Menu principal
+    </div>
+
+    <nav class="flex-1 space-y-2 px-3">
+
+        <a href="{{ url_for('dashboard') }}" title="Página inicial" class="tastia-link {{ 'ativo' if request.endpoint == 'dashboard' else '' }}">
+            <span class="icone"><i class="fa-solid fa-house"></i></span>
+            <span class="sidebar-text">Página inicial</span>
+        </a>
+
+        <a href="{{ url_for('inventario') }}" title="Meu inventário" class="tastia-link {{ 'ativo' if request.endpoint in ['inventario', 'cadastrar_ingrediente'] else '' }}">
+            <span class="icone"><i class="fa-solid fa-boxes-stacked"></i></span>
+            <span class="sidebar-text">Meu inventário</span>
+        </a>
+
+        <a href="{{ url_for('receitas') }}" title="Receitas" class="tastia-link {{ 'ativo' if request.endpoint == 'receitas' else '' }}">
+            <span class="icone"><i class="fa-solid fa-book-open"></i></span>
+            <span class="sidebar-text">Receitas</span>
+        </a>
+
+        <a href="{{ url_for('bebidas') }}" title="Bebidas" class="tastia-link {{ 'ativo' if request.endpoint == 'bebidas' else '' }}">
+            <span class="icone"><i class="fa-solid fa-mug-hot"></i></span>
+            <span class="sidebar-text">Bebidas</span>
+        </a>
+
+        <a href="{{ url_for('historico') }}" title="Histórico" class="tastia-link {{ 'ativo' if request.endpoint == 'historico' else '' }}">
+            <span class="icone"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <span class="sidebar-text">Histórico</span>
+        </a>
+
+        <div class="sidebar-section mb-3 mt-8 px-3 pt-4 text-[10px] font-bold uppercase tracking-[.2em] text-slate-500">
+            Conta
+        </div>
+
+        <a href="{{ url_for('perfil') }}" title="Meu perfil" class="tastia-link {{ 'ativo' if request.endpoint == 'perfil' else '' }}">
+            <span class="icone"><i class="fa-solid fa-circle-user"></i></span>
+            <span class="sidebar-text">Meu perfil</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer mt-6 border-t border-white/10 px-3 pt-5">
+        <div class="sidebar-user">
+            <div class="rounded-full bg-blue-500/20 text-blue-300">
+                <i class="fa-solid fa-user"></i>
+            </div>
+
+            <div class="sidebar-text min-w-0">
+                <p class="truncate text-sm font-semibold">{{ session.get('usuario_nome', 'Usuário TastIA') }}</p>
+                <p class="text-xs text-slate-400">Conta TastIA</p>
+            </div>
+        </div>
+
+        <button type="button" id="tastia-botao-sair" title="Sair da conta" class="tastia-link w-full text-left text-red-300 hover:bg-red-500 hover:text-white">
+            <span class="icone"><i class="fa-solid fa-right-from-bracket"></i></span>
+            <span class="sidebar-text">Sair da conta</span>
+        </button>
+    </div>
+</aside>
+
+<div id="tastia-modal-sair" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="tastia-titulo-sair">
+    <div class="tastia-modal w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+            <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+        </div>
+
+        <h2 id="tastia-titulo-sair" class="text-center text-xl font-extrabold text-slate-800">
+            Sair da sua conta?
+        </h2>
+
+        <p class="mt-2 text-center text-sm leading-relaxed text-slate-500">
+            Você precisará entrar novamente para acessar suas receitas e seus ingredientes.
+        </p>
+
+        <div class="mt-6 flex gap-3">
+            <button type="button" id="tastia-cancelar-sair" class="flex-1 rounded-xl border border-slate-200 px-4 py-3 font-semibold text-slate-600 transition hover:bg-slate-50">
+                Cancelar
+            </button>
+
+            <a href="{{ url_for('logout') }}" class="flex-1 rounded-xl bg-red-500 px-4 py-3 text-center font-semibold text-white transition hover:bg-red-600">
+                Sim, sair
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const sidebar = document.getElementById('tastia-sidebar');
+        const overlay = document.getElementById('tastia-overlay');
+        const abrir = document.getElementById('tastia-abrir-menu');
+        const botaoSair = document.getElementById('tastia-botao-sair');
+        const cancelarSair = document.getElementById('tastia-cancelar-sair');
+        const modalSair = document.getElementById('tastia-modal-sair');
+
+        if (sidebar && overlay && abrir) {
+            abrir.addEventListener('click', () => {
+                sidebar.classList.add('menu-aberto');
+                overlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+
+            function fecharMenu() {
+                sidebar.classList.remove('menu-aberto');
+                overlay.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            overlay.addEventListener('click', fecharMenu);
+
+            sidebar.querySelectorAll('nav a, .sidebar-footer a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 768) {
+                        fecharMenu();
+                    }
+                });
+            });
+        }
+
+        if (botaoSair && modalSair) {
+            botaoSair.addEventListener('click', () => {
+                modalSair.classList.remove('hidden');
+                modalSair.classList.add('flex');
+            });
+        }
+
+        function fecharModalSair() {
+            if (!modalSair) return;
+            modalSair.classList.add('hidden');
+            modalSair.classList.remove('flex');
+        }
+
+        if (cancelarSair) {
+            cancelarSair.addEventListener('click', fecharModalSair);
+        }
+
+        if (modalSair) {
+            modalSair.addEventListener('click', evento => {
+                if (evento.target === modalSair) {
+                    fecharModalSair();
+                }
+            });
+
+            document.addEventListener('keydown', evento => {
+                if (evento.key === 'Escape') {
+                    fecharModalSair();
+                }
+            });
+        }
+    })();
+</script>

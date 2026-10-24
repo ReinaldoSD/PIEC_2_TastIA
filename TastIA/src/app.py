@@ -15,17 +15,26 @@ with app.app_context():
 
 @app.errorhandler(400)
 def erro_requisicao_invalida(e):
-    return jsonify({"erro": "Requisição inválida", "detalhes": str(e)}), 400
+    return jsonify({
+        "erro": "Requisição inválida",
+        "detalhes": str(e)
+    }), 400
 
 
 @app.errorhandler(404)
 def erro_nao_encontrado(e):
-    return jsonify({"erro": "Recurso ou rota não encontrada", "detalhes": str(e)}), 404
+    return jsonify({
+        "erro": "Recurso ou rota não encontrada",
+        "detalhes": str(e)
+    }), 404
 
 
 @app.errorhandler(500)
 def erro_interno_servidor(e):
-    return jsonify({"erro": "Erro interno no servidor", "detalhes": str(e)}), 500
+    return jsonify({
+        "erro": "Erro interno no servidor",
+        "detalhes": str(e)
+    }), 500
 
 
 @app.route('/')
@@ -36,9 +45,9 @@ def index():
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if request.method == 'POST':
-        nome = request.form.get('nome')
-        email = request.form.get('email')
-        senha = request.form.get('senha')
+        nome = request.form.get('nome', '').strip()
+        email = request.form.get('email', '').strip()
+        senha = request.form.get('senha', '')
 
         if not nome or not email or not senha:
             flash('Por favor, preencha todos os campos.', 'erro')
@@ -46,15 +55,24 @@ def cadastro():
 
         conn = obter_conexao()
         cursor = conn.cursor()
-        
-        usuario_existente = cursor.execute('SELECT id FROM usuarios WHERE email = ?', (email,)).fetchone()
+
+        usuario_existente = cursor.execute(
+            'SELECT id FROM usuarios WHERE email = ?',
+            (email,)
+        ).fetchone()
+
         if usuario_existente:
-            flash('Este e-mail já está registado.', 'erro')
             conn.close()
+            flash('Este e-mail já está cadastrado.', 'erro')
             return redirect(url_for('cadastro'))
 
         senha_hash = generate_password_hash(senha)
-        cursor.execute('INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, ?)', (nome, email, senha_hash))
+
+        cursor.execute(
+            'INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, ?)',
+            (nome, email, senha_hash)
+        )
+
         conn.commit()
         conn.close()
 
@@ -67,16 +85,18 @@ def cadastro():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        senha = request.form.get('senha')
+        email = request.form.get('email', '').strip()
+        senha = request.form.get('senha', '')
 
         if not email or not senha:
             flash('Por favor, preencha o e-mail e a senha.', 'erro')
             return redirect(url_for('login'))
 
         conn = obter_conexao()
-        cursor = conn.cursor()
-        usuario = cursor.execute('SELECT * FROM usuarios WHERE email = ?', (email,)).fetchone()
+        usuario = conn.execute(
+            'SELECT * FROM usuarios WHERE email = ?',
+            (email,)
+        ).fetchone()
         conn.close()
 
         if usuario and check_password_hash(usuario['senha_hash'], senha):
@@ -84,12 +104,22 @@ def login():
             session['usuario_nome'] = usuario['nome']
             flash('Login efetuado com sucesso!', 'sucesso')
             return redirect(url_for('dashboard'))
-        else:
-            flash('E-mail ou senha incorretos.', 'erro')
-            return redirect(url_for('login'))
+
+        flash('E-mail ou senha incorretos.', 'erro')
+        return redirect(url_for('login'))
 
     return render_template('login.html')
 
+@app.route('/recuperar_senha', methods=['GET', 'POST'])
+def recuperar_senha():
+    if request.method == 'POST':
+        flash(
+            'O envio de recuperação por e-mail ainda precisa ser configurado.',
+            'erro'
+        )
+        return redirect(url_for('recuperar_senha'))
+
+    return render_template('esqueci_senha.html')
 
 @app.route('/logout')
 def logout():
@@ -101,17 +131,21 @@ def logout():
 @app.route('/dashboard')
 def dashboard():
     if 'usuario_id' not in session:
-        flash('Faça login para aceder à dashboard.', 'erro')
+        flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
-    return render_template('dashboard.html', nome_usuario=session.get('usuario_nome'))
+
+    return render_template(
+        'dashboard.html',
+        nome_usuario=session.get('usuario_nome')
+    )
 
 
 @app.route('/inventario')
 def inventario():
     if 'usuario_id' not in session:
-        flash('Faça login para aceder ao inventário.', 'erro')
+        flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
-    
+
     conn = obter_conexao()
     itens = conn.execute(
         'SELECT * FROM inventario WHERE usuario_id = ? ORDER BY nome COLLATE NOCASE',
@@ -127,25 +161,55 @@ def cadastrar_ingrediente():
     if 'usuario_id' not in session:
         flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
-        
+
     if request.method == 'POST':
-        nome = request.form.get('nome')
-        categoria = request.form.get('categoria')
-        quantidade = request.form.get('quantidade')
+        nome = request.form.get('nome', '').strip()
+        categoria = request.form.get('categoria', '').strip()
+        quantidade = request.form.get('quantidade', '').strip()
         validade = request.form.get('validade') or None
 
+        if not nome or not categoria or not quantidade:
+            flash('Preencha o nome, a categoria e a quantidade.', 'erro')
+            return redirect(url_for('cadastrar_ingrediente'))
+
         conn = obter_conexao()
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO inventario (usuario_id, nome, categoria, quantidade, validade) VALUES (?, ?, ?, ?, ?)',
+        conn.execute(
+            '''
+            INSERT INTO inventario
+            (usuario_id, nome, categoria, quantidade, validade)
+            VALUES (?, ?, ?, ?, ?)
+            ''',
             (session['usuario_id'], nome, categoria, quantidade, validade)
         )
         conn.commit()
         conn.close()
+
         flash('Ingrediente cadastrado com sucesso!', 'sucesso')
         return redirect(url_for('inventario'))
 
     return render_template('cadastrar_ingrediente.html')
+
+
+@app.route('/excluir_ingrediente/<int:item_id>', methods=['POST'])
+def excluir_ingrediente(item_id):
+    if 'usuario_id' not in session:
+        flash('Faça login para continuar.', 'erro')
+        return redirect(url_for('login'))
+
+    conn = obter_conexao()
+    cursor = conn.execute(
+        'DELETE FROM inventario WHERE id = ? AND usuario_id = ?',
+        (item_id, session['usuario_id'])
+    )
+    conn.commit()
+    conn.close()
+
+    if cursor.rowcount:
+        flash('Ingrediente excluído com sucesso.', 'sucesso')
+    else:
+        flash('Ingrediente não encontrado.', 'erro')
+
+    return redirect(url_for('inventario'))
 
 
 @app.route('/receitas')
@@ -153,6 +217,7 @@ def receitas():
     if 'usuario_id' not in session:
         flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
+
     return render_template('receitas.html')
 
 
@@ -161,7 +226,19 @@ def bebidas():
     if 'usuario_id' not in session:
         flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
+
     return render_template('bebidas.html')
+
+@app.route('/perfil')
+def perfil():
+    if 'usuario_id' not in session:
+        return redirect(url_for('login'))
+
+    return render_template('perfil.html')
+
+@app.route('/historico')
+def historico():
+    return render_template('historico.html')
 
 
 if __name__ == '__main__':
