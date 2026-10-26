@@ -1,13 +1,3 @@
-"""Perfil do prato e regras gastronômicas de harmonização do TastIA.
-
-1. `perfil_do_prato(texto)` lê a receita/refeição e devolve as tags do prato
-   (apimentado, frito, doce, leve, carne_vermelha...), no mesmo vocabulário do catálogo.
-2. `avaliar_regras(bebida, perfil, ...)` aplica regras simples e explicáveis
-   (ex.: "prato apimentado -> bebida gelada, com gás ou levemente doce"), devolvendo uma
-   pontuação e os motivos. Os motivos viram a justificativa mostrada ao usuário.
-
-Não usa IA: roda sem modelo e sem internet, por isso é fácil de testar.
-"""
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
