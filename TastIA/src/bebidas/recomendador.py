@@ -1,17 +1,3 @@
-"""Recomendação de bebidas do TastIA (IA 2).
-
-Como funciona
--------------
-1. Lê a receita (ou a refeição digitada) e extrai o perfil do prato (regras.py).
-2. Compara o texto com a descrição de cada bebida do catálogo por SIMILARIDADE:
-     - motor 'minilm': sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2;
-     - motor 'lexico': plano B, sem modelo (TF-IDF simples). Entra sozinho se o MiniLM não
-       estiver baixado ou o sentence-transformers não estiver instalado, e é o que roda nos testes.
-3. Soma a similaridade com as regras gastronômicas (apimentado, frito, doce, leve...).
-4. Aplica os filtros (com/sem álcool) e escolhe 3 bebidas variadas, cada uma com justificativa.
-
-Variável de ambiente opcional:  BEBIDAS_MOTOR = auto (padrão) | minilm | lexico
-"""
 import math
 import os
 import re
