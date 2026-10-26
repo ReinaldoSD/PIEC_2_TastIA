@@ -5,7 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receitas | TastIA</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca Marked.js para converter Markdown em HTML formatado -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        /* Estilização limpa e estruturada para a receita gerada */
+        .receita-formatada h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .receita-formatada h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .receita-formatada p {
+            margin-bottom: 0.5rem;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        .receita-formatada strong {
+            color: #0f172a;
+        }
+        .receita-formatada ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 1.25rem;
+        }
+        .receita-formatada ul li {
+            position: relative;
+            padding-left: 1.75rem;
+            margin-bottom: 0.4rem;
+            color: #334155;
+        }
+        .receita-formatada ul li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: #2563eb;
+            font-weight: bold;
+        }
+        .receita-formatada ol {
+            list-style-type: decimal;
+            padding-left: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        .receita-formatada ol li {
+            margin-bottom: 0.75rem;
+            padding-left: 0.5rem;
+            color: #334155;
+            line-height: 1.6;
+        }
+    </style>
 </head>
 
 <body class="min-h-screen bg-blue-50 text-slate-800">
@@ -34,18 +96,18 @@
                         <div>
                             <label for="tempo" class="mb-2 block font-semibold">Tempo de preparo</label>
                             <select id="tempo" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-                                <option>Até 15 minutos</option>
-                                <option>Até 30 minutos</option>
-                                <option>Até 45 minutos</option>
-                                <option>Até 1 hora</option>
-                                <option>Sem limite de tempo</option>
+                                <option value="15">Até 15 minutos</option>
+                                <option value="30">Até 30 minutos</option>
+                                <option value="45">Até 45 minutos</option>
+                                <option value="60">Até 1 hora</option>
+                                <option value="qualquer">Sem limite de tempo</option>
                             </select>
                         </div>
 
                         <div>
-                            <label for="ingredientes" class="mb-2 block font-semibold">Ingredientes que você tem</label>
+                            <label for="ingredientes" class="mb-2 block font-semibold">Ingredientes que você tem (opcional)</label>
                             <textarea id="ingredientes" rows="3" maxlength="1000" placeholder="Ex.: arroz, ovos, tomate, cebola..." class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
-                            <p class="mt-2 text-sm text-slate-400">Separe os ingredientes por vírgulas.</p>
+                            <p class="mt-2 text-sm text-slate-400">Se deixar em branco, o TastIA usará todo o seu inventário cadastrado.</p>
                         </div>
 
                         <div>
@@ -55,19 +117,35 @@
 
                         <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
 
-                        <button type="submit" class="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white transition hover:bg-blue-700">
+                        <button type="submit" id="btnSubmit" class="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white transition hover:bg-blue-700">
                             <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            Organizar pedido
+                            Gerar receita com Inteligência Artificial
                         </button>
                     </form>
                 </section>
 
                 <section id="resultado" class="mt-8 hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-                    <h2 class="mb-4 text-xl font-bold">Resumo da solicitação</h2>
-                    <div id="resumo" class="space-y-3 text-slate-600"></div>
-                    <p class="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
-                        Esta é uma prévia visual. A geração automática de receitas ainda precisa ser conectada à inteligência artificial.
-                    </p>
+                    <div class="flex items-center justify-between mb-6">
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-600"><i class="fa-solid fa-sparkles mr-1"></i>Receita Personalizada</span>
+                        <span id="badgeValidade" class="px-3 py-1 text-xs font-semibold rounded-full"></span>
+                    </div>
+                    
+                    <!-- Contentor onde a receita formatada será inserida exatamente como o modelo gera -->
+                    <div id="conteudoReceita" class="receita-formatada rounded-2xl bg-slate-50 p-6 border border-slate-200 shadow-inner"></div>
+                    
+                    <div id="avisoForaInventario" class="mt-4 hidden rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+                        <p class="font-semibold"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Atenção:</p>
+                        <p id="textoForaInventario" class="mt-1"></p>
+                    </div>
+
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        <a href="{{ url_for('historico') }}" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Ver no Histórico
+                        </a>
+                        <a href="{{ url_for('bebidas') }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                            <i class="fa-solid fa-mug-hot"></i> Sugerir bebida
+                        </a>
+                    </div>
                 </section>
 
                 <footer class="py-8 text-center text-sm text-slate-400">
@@ -81,48 +159,85 @@
         const formulario = document.getElementById('formReceita');
         const mensagem = document.getElementById('mensagem');
         const resultado = document.getElementById('resultado');
-        const resumo = document.getElementById('resumo');
+        const conteudoReceita = document.getElementById('conteudoReceita');
+        const badgeValidade = document.getElementById('badgeValidade');
+        const avisoForaInventario = document.getElementById('avisoForaInventario');
+        const textoForaInventario = document.getElementById('textoForaInventario');
+        const btnSubmit = document.getElementById('btnSubmit');
 
-        formulario.addEventListener('submit', function(event) {
+        formulario.addEventListener('submit', async function(event) {
             event.preventDefault();
 
             const pedido = document.getElementById('pedido').value.trim();
+            const tempo = document.getElementById('tempo').value;
+            const ingredientes = document.getElementById('ingredientes').value.trim();
+            const restricoes = document.getElementById('restricoes').value.trim();
 
             if (!pedido) {
                 mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
                 mensagem.textContent = 'Descreva o que você gostaria de preparar.';
+                mensagem.classList.remove('hidden');
                 return;
             }
 
-            mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800';
-            mensagem.textContent = 'Pedido organizado. A geração automática ainda precisa ser conectada.';
+            mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center gap-3';
+            mensagem.innerHTML = '<div class="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600"></div><span>A criar a sua receita com Inteligência Artificial... Por favor, aguarde alguns segundos.</span>';
+            mensagem.classList.remove('hidden');
+            resultado.classList.add('hidden');
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
 
-            resumo.replaceChildren();
+            try {
+                const response = await fetch('/api/receita/gerar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pedido,
+                        tempo,
+                        ingredientes,
+                        restricoes
+                    })
+                });
 
-            const dados = [
-                ['Seu pedido', pedido],
-                ['Tempo de preparo', document.getElementById('tempo').value],
-                ['Ingredientes', document.getElementById('ingredientes').value.trim() || 'Não informados'],
-                ['Preferências ou restrições', document.getElementById('restricoes').value.trim() || 'Não informadas']
-            ];
+                const data = await response.json();
 
-            dados.forEach(function(item) {
-                const bloco = document.createElement('div');
-                const titulo = document.createElement('p');
-                const valor = document.createElement('p');
+                if (!response.ok) {
+                    throw new Error(data.erro || 'Erro ao gerar receita.');
+                }
 
-                titulo.className = 'text-sm font-semibold text-slate-800';
-                titulo.textContent = item[0];
+                mensagem.classList.add('hidden');
 
-                valor.className = 'whitespace-pre-wrap break-words';
-                valor.textContent = item[1];
+                // Converte a string em Markdown devolvida pela IA num HTML limpo e estruturado
+                if (window.marked) {
+                    conteudoReceita.innerHTML = marked.parse(data.receita);
+                } else {
+                    conteudoReceita.textContent = data.receita;
+                }
 
-                bloco.append(titulo, valor);
-                resumo.appendChild(bloco);
-            });
+                if (data.valida) {
+                    badgeValidade.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200';
+                    badgeValidade.textContent = '✓ 100% com ingredientes do inventário';
+                    avisoForaInventario.classList.add('hidden');
+                } else {
+                    badgeValidade.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200';
+                    badgeValidade.textContent = '⚠ Contém itens fora do inventário';
+                    avisoForaInventario.classList.remove('hidden');
+                    textoForaInventario.textContent = 'Itens identificados fora do inventário: ' + (data.fora_do_inventario ? data.fora_do_inventario.join(', ') : 'Nenhum');
+                }
 
-            resultado.classList.remove('hidden');
-            resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                resultado.classList.remove('hidden');
+                resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            } catch (err) {
+                mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
+                mensagem.textContent = 'Erro: ' + err.message;
+                mensagem.classList.remove('hidden');
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         });
     </script>
 </body>
