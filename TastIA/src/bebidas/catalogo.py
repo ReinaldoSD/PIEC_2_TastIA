@@ -1,7 +1,3 @@
-"""Catálogo de bebidas do TastIA - Apenas bebidas Não Alcoólicas.
-
-Todas as opções de bebidas possuem teor alcoólico zero e álcool desativado.
-"""
 from typing import Dict, List
 
 TIPOS = (
