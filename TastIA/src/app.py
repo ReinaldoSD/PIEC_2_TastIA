@@ -7,6 +7,7 @@ from servicos.modelos_servico import baixar_ou_carregar_modelos
 from banco_dados.database import obter_conexao
 from rotas.receita import bp_receita
 from rotas.bebida import bp_bebida
+from rotas.ingrediente import bp_ingrediente
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -14,6 +15,7 @@ app.config.from_object(Config)
 # Registo dos Blueprints REST
 app.register_blueprint(bp_receita)
 app.register_blueprint(bp_bebida)
+app.register_blueprint(bp_ingrediente)
 
 with app.app_context():
     criar_tabelas()
@@ -168,6 +170,21 @@ def cadastrar_ingrediente():
 
     return render_template('cadastrar_ingrediente.html')
 
+@app.route('/excluir_ingrediente/<int:item_id>', methods=['POST'])
+def excluir_ingrediente(item_id):
+    if 'usuario_id' not in session:
+        flash('Faça login para continuar.', 'erro')
+        return redirect(url_for('login'))
+
+    conn = obter_conexao()
+    conn.execute(
+        'DELETE FROM inventario WHERE id = ? AND usuario_id = ?',
+        (item_id, session['usuario_id'])
+    )
+    conn.commit()
+    conn.close()
+    flash('Ingrediente removido com sucesso!', 'sucesso')
+    return redirect(url_for('inventario'))
 
 @app.route('/receitas')
 def receitas():
