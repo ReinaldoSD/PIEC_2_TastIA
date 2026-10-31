@@ -26,7 +26,7 @@
                 </h1>
 
                 <p class="mt-3 max-w-2xl text-slate-500">
-                    Encontre novamente as receitas que você já explorou na TastIA.
+                    Encontre novamente as receitas que a TastIA criou para você.
                 </p>
             </section>
 
@@ -37,8 +37,8 @@
                             <i class="fa-solid fa-book-open text-xl"></i>
                         </div>
                         <div>
-                            <p class="text-sm text-slate-500">Receitas consultadas</p>
-                            <p class="text-2xl font-extrabold">12</p>
+                            <p class="text-sm text-slate-500">Receitas salvas</p>
+                            <p id="stat-total" class="text-2xl font-extrabold">-</p>
                         </div>
                     </div>
                 </div>
@@ -50,7 +50,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-slate-500">Mais recente</p>
-                            <p class="text-lg font-bold">Hoje</p>
+                            <p id="stat-recente" class="text-lg font-bold">-</p>
                         </div>
                     </div>
                 </div>
@@ -62,141 +62,66 @@
                         </div>
                         <div>
                             <p class="text-sm text-slate-500">Categorias</p>
-                            <p class="text-2xl font-extrabold">4</p>
+                            <p id="stat-categorias" class="text-2xl font-extrabold">-</p>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <div id="aviso-topo" class="mb-4 hidden rounded-xl border p-4 text-sm" role="status"></div>
+
             <section class="mb-6 flex flex-col gap-4 sm:flex-row">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input id="busca-receita" type="text" placeholder="Buscar receita pelo nome..."
+                    <input id="busca-receita" type="text" placeholder="Buscar pelo nome ou pelo pedido..."
                            class="w-full rounded-xl border border-blue-100 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
                 </div>
 
                 <select id="filtro-categoria"
                         class="rounded-xl border border-blue-100 bg-white px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
                     <option value="todas">Todas as categorias</option>
+                    <option value="Café da manhã">Café da manhã</option>
                     <option value="Almoço">Almoço</option>
                     <option value="Jantar">Jantar</option>
                     <option value="Lanche">Lanche</option>
                     <option value="Sobremesa">Sobremesa</option>
+                    <option value="Outros">Outros</option>
                 </select>
             </section>
 
             <section>
                 <div class="mb-5 flex items-center justify-between gap-3">
                     <h2 class="text-xl font-bold">Receitas anteriores</h2>
-                    <span id="contador" class="text-sm text-slate-500">4 receitas</span>
+                    <span id="contador" class="text-sm text-slate-500"></span>
                 </div>
 
-                <div id="lista-receitas" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div id="carregando" class="rounded-2xl border border-blue-100 bg-white p-10 text-center">
+                    <div class="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"></div>
+                    <p class="text-sm text-slate-500">Carregando suas receitas...</p>
+                </div>
 
-                    <article class="receita-card overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                             data-nome="Nome do Almoço 1" data-categoria="Almoço">
-                        <div class="flex gap-4 p-5">
-                            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-500">
-                                <i class="fa-solid fa-bowl-food text-3xl"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="mb-2 flex flex-wrap items-center gap-2">
-                                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Almoço</span>
-                                    <span class="text-xs text-slate-400">Hoje, 12:30</span>
-                                </div>
-                                <h3 class="text-lg font-bold">Nome do Almoço 1</h3>
-                                <p class="mt-2 text-sm text-slate-500">Ingredientes utilizados na receita de exemplo.</p>
-                                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-                                    <span class="text-sm text-slate-500"><i class="fa-regular fa-clock mr-2"></i>25 min</span>
-                                    <button type="button" class="ver-receita rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                                            data-titulo="Nome do Almoço 1"
-                                            data-ingredientes="Ingredientes de exemplo para o almoço."
-                                            data-preparo="Modo de preparo demonstrativo para a receita de almoço.">
-                                        <i class="fa-solid fa-eye mr-2"></i>Ver receita
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
+                <div id="erro" class="hidden rounded-2xl border border-red-200 bg-red-50 p-10 text-center">
+                    <i class="fa-solid fa-triangle-exclamation mb-4 text-3xl text-red-400"></i>
+                    <h3 class="text-lg font-bold text-red-700">Não foi possível carregar o histórico</h3>
+                    <p id="erro-texto" class="mt-2 text-sm text-red-600"></p>
+                    <button id="tentar-de-novo" type="button"
+                            class="mt-5 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700">
+                        Tentar de novo
+                    </button>
+                </div>
 
-                    <article class="receita-card overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                             data-nome="Nome do Jantar 1" data-categoria="Jantar">
-                        <div class="flex gap-4 p-5">
-                            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-yellow-100 text-yellow-600">
-                                <i class="fa-solid fa-egg text-3xl"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="mb-2 flex flex-wrap items-center gap-2">
-                                    <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Jantar</span>
-                                    <span class="text-xs text-slate-400">Ontem, 19:10</span>
-                                </div>
-                                <h3 class="text-lg font-bold">Nome do Jantar 1</h3>
-                                <p class="mt-2 text-sm text-slate-500">Ingredientes utilizados na receita de exemplo.</p>
-                                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-                                    <span class="text-sm text-slate-500"><i class="fa-regular fa-clock mr-2"></i>15 min</span>
-                                    <button type="button" class="ver-receita rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                                            data-titulo="Nome do Jantar 1"
-                                            data-ingredientes="Ingredientes de exemplo para o jantar."
-                                            data-preparo="Modo de preparo demonstrativo para a receita de jantar.">
-                                        <i class="fa-solid fa-eye mr-2"></i>Ver receita
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
+                <div id="lista-receitas" class="grid grid-cols-1 gap-5 lg:grid-cols-2"></div>
 
-                    <article class="receita-card overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                             data-nome="Nome do Lanche 1" data-categoria="Lanche">
-                        <div class="flex gap-4 p-5">
-                            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
-                                <i class="fa-solid fa-cookie-bite text-3xl"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="mb-2 flex flex-wrap items-center gap-2">
-                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Lanche</span>
-                                    <span class="text-xs text-slate-400">18/10/2026</span>
-                                </div>
-                                <h3 class="text-lg font-bold">Nome do Lanche 1</h3>
-                                <p class="mt-2 text-sm text-slate-500">Ingredientes utilizados na receita de exemplo.</p>
-                                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-                                    <span class="text-sm text-slate-500"><i class="fa-regular fa-clock mr-2"></i>20 min</span>
-                                    <button type="button" class="ver-receita rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                                            data-titulo="Nome do Lanche 1"
-                                            data-ingredientes="Ingredientes de exemplo para o lanche."
-                                            data-preparo="Modo de preparo demonstrativo para a receita de lanche.">
-                                        <i class="fa-solid fa-eye mr-2"></i>Ver receita
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="receita-card overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                             data-nome="Nome da Sobremesa 1" data-categoria="Sobremesa">
-                        <div class="flex gap-4 p-5">
-                            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-pink-600">
-                                <i class="fa-solid fa-cake-candles text-3xl"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="mb-2 flex flex-wrap items-center gap-2">
-                                    <span class="rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">Sobremesa</span>
-                                    <span class="text-xs text-slate-400">15/10/2026</span>
-                                </div>
-                                <h3 class="text-lg font-bold">Nome da Sobremesa 1</h3>
-                                <p class="mt-2 text-sm text-slate-500">Ingredientes utilizados na receita de exemplo.</p>
-                                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-                                    <span class="text-sm text-slate-500"><i class="fa-regular fa-clock mr-2"></i>45 min</span>
-                                    <button type="button" class="ver-receita rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                                            data-titulo="Nome da Sobremesa 1"
-                                            data-ingredientes="Ingredientes de exemplo para a sobremesa."
-                                            data-preparo="Modo de preparo demonstrativo para a receita de sobremesa.">
-                                        <i class="fa-solid fa-eye mr-2"></i>Ver receita
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
-
+                <div id="historico-vazio" class="hidden rounded-2xl border border-dashed border-blue-200 bg-white p-10 text-center">
+                    <i class="fa-solid fa-book-open mb-4 text-3xl text-slate-300"></i>
+                    <h3 class="text-lg font-bold">Você ainda não tem receitas salvas</h3>
+                    <p class="mt-2 text-sm text-slate-500">
+                        As receitas conferidas pela TastIA aparecem aqui automaticamente.
+                    </p>
+                    <a href="{{ url_for('receitas') }}"
+                       class="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+                        Pedir uma receita
+                    </a>
                 </div>
 
                 <div id="sem-resultados" class="hidden rounded-2xl border border-dashed border-blue-200 bg-white p-10 text-center">
@@ -209,88 +134,319 @@
     </main>
 
     <div id="modal-receita" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-        <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-            <div class="mb-5 flex items-start justify-between gap-4">
-                <div>
+        <div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div class="mb-4 flex items-start justify-between gap-4">
+                <div class="min-w-0">
                     <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Detalhes da receita</span>
-                    <h2 id="modal-titulo" class="mt-2 text-2xl font-extrabold"></h2>
+                    <h2 id="modal-titulo" class="mt-2 break-words text-2xl font-extrabold"></h2>
+                    <p id="modal-meta" class="mt-1 text-sm text-slate-500"></p>
                 </div>
-                <button id="fechar-modal" type="button" aria-label="Fechar" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">
+                <button id="fechar-modal" type="button" aria-label="Fechar"
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
 
-            <div class="mb-5 rounded-2xl bg-blue-50 p-4">
+            <p id="modal-pedido" class="mb-5 rounded-xl bg-slate-50 p-3 text-sm italic text-slate-500"></p>
+
+            <div id="modal-bloco-ingredientes" class="mb-5 rounded-2xl bg-blue-50 p-4">
                 <h3 class="mb-2 font-bold"><i class="fa-solid fa-carrot mr-2 text-blue-600"></i>Ingredientes</h3>
-                <p id="modal-ingredientes" class="text-sm leading-relaxed text-slate-600"></p>
+                <ul id="modal-ingredientes" class="list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-600"></ul>
             </div>
 
-            <div>
+            <div id="modal-bloco-preparo">
                 <h3 class="mb-2 font-bold"><i class="fa-solid fa-list-ol mr-2 text-blue-600"></i>Modo de preparo</h3>
-                <p id="modal-preparo" class="text-sm leading-relaxed text-slate-600"></p>
+                <ol id="modal-preparo" class="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600"></ol>
             </div>
 
-            <button type="button" id="fechar-modal-final" class="mt-6 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">
-                Fechar
-            </button>
+            <pre id="modal-texto-bruto" class="hidden whitespace-pre-wrap break-words rounded-2xl bg-slate-50 p-4 text-sm text-slate-600"></pre>
+
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button type="button" id="modal-copiar"
+                        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 font-semibold text-slate-600 transition hover:bg-slate-50">
+                    <i class="fa-regular fa-copy"></i>
+                    <span id="modal-copiar-texto">Copiar receita</span>
+                </button>
+                <button type="button" id="modal-excluir"
+                        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 font-semibold text-red-600 transition hover:bg-red-50">
+                    <i class="fa-regular fa-trash-can"></i>
+                    Excluir do histórico
+                </button>
+                <button type="button" id="fechar-modal-final"
+                        class="inline-flex flex-1 items-center justify-center rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">
+                    Fechar
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
+        const URL_LISTAR = "{{ url_for('receita.historico_listar') }}";
+        const URL_LOGIN = "{{ url_for('login') }}";
+
         const busca = document.getElementById('busca-receita');
         const filtro = document.getElementById('filtro-categoria');
-        const cards = [...document.querySelectorAll('.receita-card')];
+        const lista = document.getElementById('lista-receitas');
         const contador = document.getElementById('contador');
+        const carregando = document.getElementById('carregando');
+        const blocoErro = document.getElementById('erro');
+        const textoErro = document.getElementById('erro-texto');
+        const vazio = document.getElementById('historico-vazio');
         const semResultados = document.getElementById('sem-resultados');
+        const avisoTopo = document.getElementById('aviso-topo');
         const modal = document.getElementById('modal-receita');
 
-        function filtrarReceitas() {
-            const termo = busca.value.trim().toLocaleLowerCase('pt-BR');
+        const VISUAL = {
+            'Café da manhã': { icone: 'fa-mug-hot', caixa: 'bg-amber-100 text-amber-600', selo: 'bg-amber-50 text-amber-700' },
+            'Almoço':        { icone: 'fa-bowl-food', caixa: 'bg-orange-100 text-orange-500', selo: 'bg-blue-50 text-blue-700' },
+            'Jantar':        { icone: 'fa-moon', caixa: 'bg-indigo-100 text-indigo-600', selo: 'bg-indigo-50 text-indigo-700' },
+            'Lanche':        { icone: 'fa-bread-slice', caixa: 'bg-yellow-100 text-yellow-600', selo: 'bg-yellow-50 text-yellow-700' },
+            'Sobremesa':     { icone: 'fa-cake-candles', caixa: 'bg-pink-100 text-pink-600', selo: 'bg-pink-50 text-pink-700' },
+            'Outros':        { icone: 'fa-utensils', caixa: 'bg-slate-100 text-slate-500', selo: 'bg-slate-100 text-slate-600' }
+        };
+
+        let receitas = [];
+        let abertaId = null;
+        let temporizadorAviso = null;
+
+        /* ---------- utilidades ---------- */
+        function criar(tag, classes, texto) {
+            const no = document.createElement(tag);
+            if (classes) no.className = classes;
+            if (texto !== undefined) no.textContent = texto;
+            return no;
+        }
+
+        function semAcento(texto) {
+            return String(texto || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function mostrarAviso(tipo, texto) {
+            const cores = {
+                ok: 'border-green-200 bg-green-50 text-green-800',
+                erro: 'border-red-200 bg-red-50 text-red-700'
+            };
+            avisoTopo.className = 'mb-4 rounded-xl border p-4 text-sm ' + cores[tipo];
+            avisoTopo.textContent = texto;
+            clearTimeout(temporizadorAviso);
+            temporizadorAviso = setTimeout(function() { avisoTopo.className = 'hidden'; }, 5000);
+        }
+
+        function formatarData(iso) {
+            const data = new Date(iso);
+            if (isNaN(data.getTime())) return '';
+            const hoje = new Date();
+            const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+            const inicioData = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+            const dias = Math.round((inicioHoje - inicioData) / 86400000);
+            const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            if (dias === 0) return 'Hoje, ' + hora;
+            if (dias === 1) return 'Ontem, ' + hora;
+            return data.toLocaleDateString('pt-BR');
+        }
+
+        function formatarTempo(minutos) {
+            if (!minutos) return '';
+            if (minutos < 60) return minutos + ' min';
+            const h = Math.floor(minutos / 60);
+            const m = minutos % 60;
+            return h + ' h' + (m ? ' ' + m + ' min' : '');
+        }
+
+        async function chamarApi(url, opcoes) {
+            const resp = await fetch(url, opcoes);
+            let dados = null;
+            try { dados = await resp.json(); } catch (e) { /* resposta sem JSON */ }
+            if (resp.status === 401) {
+                window.location.href = URL_LOGIN;
+                throw new Error('Sua sessão expirou. Faça login novamente.');
+            }
+            if (!resp.ok) {
+                throw new Error((dados && (dados.erro || dados.detalhes)) || ('Erro inesperado (' + resp.status + ').'));
+            }
+            return dados;
+        }
+
+        /* ---------- cartões ---------- */
+        function criarCartao(r) {
+            const visual = VISUAL[r.categoria] || VISUAL['Outros'];
+
+            const cartao = criar('article', 'receita-card overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md');
+            const linha = criar('div', 'flex gap-4 p-5');
+
+            const caixaIcone = criar('div', 'flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ' + visual.caixa);
+            caixaIcone.appendChild(criar('i', 'fa-solid ' + visual.icone + ' text-3xl'));
+
+            const corpo = criar('div', 'min-w-0 flex-1');
+
+            const topo = criar('div', 'mb-2 flex flex-wrap items-center gap-2');
+            topo.appendChild(criar('span', 'rounded-full px-3 py-1 text-xs font-semibold ' + visual.selo, r.categoria));
+            topo.appendChild(criar('span', 'text-xs text-slate-400', formatarData(r.criado_em)));
+
+            const titulo = criar('h3', 'break-words text-lg font-bold', r.titulo);
+            const resumo = criar('p', 'mt-2 line-clamp-2 text-sm text-slate-500',
+                r.ingredientes.length ? r.ingredientes.slice(0, 4).join(', ') + (r.ingredientes.length > 4 ? '...' : '') : r.pedido);
+
+            const rodape = criar('div', 'mt-4 flex flex-wrap items-center justify-between gap-3');
+            const tempo = criar('span', 'text-sm text-slate-500');
+            if (r.tempo_min) {
+                tempo.appendChild(criar('i', 'fa-regular fa-clock mr-2'));
+                tempo.appendChild(document.createTextNode(formatarTempo(r.tempo_min)));
+            }
+
+            const acoes = criar('div', 'flex items-center gap-2');
+
+            const botaoExcluir = criar('button', 'flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-600');
+            botaoExcluir.type = 'button';
+            botaoExcluir.setAttribute('aria-label', 'Excluir receita');
+            botaoExcluir.appendChild(criar('i', 'fa-regular fa-trash-can'));
+            botaoExcluir.addEventListener('click', function() { excluirReceita(r.id); });
+
+            const botaoVer = criar('button', 'rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700');
+            botaoVer.type = 'button';
+            botaoVer.appendChild(criar('i', 'fa-solid fa-eye mr-2'));
+            botaoVer.appendChild(document.createTextNode('Ver receita'));
+            botaoVer.addEventListener('click', function() { abrirModal(r); });
+
+            acoes.append(botaoExcluir, botaoVer);
+            rodape.append(tempo, acoes);
+            corpo.append(topo, titulo, resumo, rodape);
+            linha.append(caixaIcone, corpo);
+            cartao.appendChild(linha);
+            return cartao;
+        }
+
+        function atualizarEstatisticas() {
+            document.getElementById('stat-total').textContent = receitas.length;
+            document.getElementById('stat-recente').textContent = receitas.length ? formatarData(receitas[0].criado_em) : '-';
+            document.getElementById('stat-categorias').textContent = new Set(receitas.map(function(r) { return r.categoria; })).size;
+        }
+
+        function renderizar() {
+            const termo = semAcento(busca.value.trim());
             const categoria = filtro.value;
-            let quantidade = 0;
 
-            cards.forEach(card => {
-                const nome = card.dataset.nome.toLocaleLowerCase('pt-BR');
-                const correspondeNome = nome.includes(termo);
-                const correspondeCategoria = categoria === 'todas' || card.dataset.categoria === categoria;
-                const mostrar = correspondeNome && correspondeCategoria;
-
-                card.classList.toggle('hidden', !mostrar);
-                if (mostrar) quantidade++;
+            const visiveis = receitas.filter(function(r) {
+                const correspondeTexto = !termo || semAcento(r.titulo).includes(termo) || semAcento(r.pedido).includes(termo);
+                const correspondeCategoria = categoria === 'todas' || r.categoria === categoria;
+                return correspondeTexto && correspondeCategoria;
             });
 
-            contador.textContent = `${quantidade} ${quantidade === 1 ? 'receita' : 'receitas'}`;
-            semResultados.classList.toggle('hidden', quantidade !== 0);
+            lista.replaceChildren(...visiveis.map(criarCartao));
+            contador.textContent = visiveis.length + ' ' + (visiveis.length === 1 ? 'receita' : 'receitas');
+
+            vazio.classList.toggle('hidden', receitas.length !== 0);
+            semResultados.classList.toggle('hidden', receitas.length === 0 || visiveis.length !== 0);
+            contador.classList.toggle('hidden', receitas.length === 0);
+            atualizarEstatisticas();
+        }
+
+        /* ---------- carregar ---------- */
+        async function carregar() {
+            carregando.classList.remove('hidden');
+            blocoErro.classList.add('hidden');
+            lista.replaceChildren();
+            vazio.classList.add('hidden');
+            semResultados.classList.add('hidden');
+            try {
+                const dados = await chamarApi(URL_LISTAR);
+                receitas = dados.receitas || [];
+                carregando.classList.add('hidden');
+                renderizar();
+            } catch (e) {
+                carregando.classList.add('hidden');
+                textoErro.textContent = e.message;
+                blocoErro.classList.remove('hidden');
+            }
+        }
+
+        /* ---------- excluir ---------- */
+        async function excluirReceita(id) {
+            if (!confirm('Deseja realmente excluir esta receita do histórico?')) return;
+            try {
+                await chamarApi(URL_LISTAR + '/' + id, { method: 'DELETE' });
+                receitas = receitas.filter(function(r) { return r.id !== id; });
+                if (abertaId === id) fecharModal();
+                renderizar();
+                mostrarAviso('ok', 'Receita excluída do histórico.');
+            } catch (e) {
+                mostrarAviso('erro', e.message);
+            }
+        }
+
+        /* ---------- modal ---------- */
+        function abrirModal(r) {
+            abertaId = r.id;
+            document.getElementById('modal-titulo').textContent = r.titulo;
+
+            const meta = [r.categoria];
+            if (r.tempo_min) meta.push(formatarTempo(r.tempo_min));
+            if (r.porcoes) meta.push(r.porcoes + (r.porcoes === 1 ? ' porção' : ' porções'));
+            const data = formatarData(r.criado_em);
+            if (data) meta.push(data);
+            document.getElementById('modal-meta').textContent = meta.join(' · ');
+            document.getElementById('modal-pedido').textContent = 'Seu pedido: ' + r.pedido;
+
+            const temPartes = r.ingredientes.length > 0 && r.preparo.length > 0;
+            document.getElementById('modal-bloco-ingredientes').classList.toggle('hidden', !temPartes);
+            document.getElementById('modal-bloco-preparo').classList.toggle('hidden', !temPartes);
+            const bruto = document.getElementById('modal-texto-bruto');
+            bruto.classList.toggle('hidden', temPartes);
+            bruto.textContent = temPartes ? '' : r.texto;
+
+            document.getElementById('modal-ingredientes').replaceChildren(
+                ...r.ingredientes.map(function(i) { return criar('li', '', i); }));
+            document.getElementById('modal-preparo').replaceChildren(
+                ...r.preparo.map(function(p) { return criar('li', '', p); }));
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function fecharModal() {
+            abertaId = null;
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
 
-        document.querySelectorAll('.ver-receita').forEach(botao => {
-            botao.addEventListener('click', () => {
-                document.getElementById('modal-titulo').textContent = botao.dataset.titulo;
-                document.getElementById('modal-ingredientes').textContent = botao.dataset.ingredientes;
-                document.getElementById('modal-preparo').textContent = botao.dataset.preparo;
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            });
-        });
+        async function copiarAberta() {
+            const r = receitas.find(function(x) { return x.id === abertaId; });
+            if (!r) return;
+            let copiou = false;
+            try {
+                await navigator.clipboard.writeText(r.texto);
+                copiou = true;
+            } catch (e) {
+                const area = document.createElement('textarea');
+                area.value = r.texto;
+                document.body.appendChild(area);
+                area.select();
+                try { copiou = document.execCommand('copy'); } catch (e2) { copiou = false; }
+                area.remove();
+            }
+            const rotulo = document.getElementById('modal-copiar-texto');
+            rotulo.textContent = copiou ? 'Copiada!' : 'Não foi possível copiar';
+            setTimeout(function() { rotulo.textContent = 'Copiar receita'; }, 2000);
+        }
 
         document.getElementById('fechar-modal').addEventListener('click', fecharModal);
         document.getElementById('fechar-modal-final').addEventListener('click', fecharModal);
-
-        modal.addEventListener('click', evento => {
+        document.getElementById('modal-copiar').addEventListener('click', copiarAberta);
+        document.getElementById('modal-excluir').addEventListener('click', function() {
+            if (abertaId !== null) excluirReceita(abertaId);
+        });
+        modal.addEventListener('click', function(evento) {
             if (evento.target === modal) fecharModal();
         });
-
-        document.addEventListener('keydown', evento => {
+        document.addEventListener('keydown', function(evento) {
             if (evento.key === 'Escape') fecharModal();
         });
 
-        busca.addEventListener('input', filtrarReceitas);
-        filtro.addEventListener('change', filtrarReceitas);
+        busca.addEventListener('input', renderizar);
+        filtro.addEventListener('change', renderizar);
+        document.getElementById('tentar-de-novo').addEventListener('click', carregar);
+
+        carregar();
     </script>
 
 </body>
