@@ -12,7 +12,6 @@ from rotas.ingrediente import bp_ingrediente
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Registo dos Blueprints REST
 app.register_blueprint(bp_receita)
 app.register_blueprint(bp_bebida)
 app.register_blueprint(bp_ingrediente)
@@ -207,15 +206,7 @@ def historico():
     if 'usuario_id' not in session:
         flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
-    
-    conn = obter_conexao()
-    historico_receitas = conn.execute(
-        'SELECT * FROM receitas WHERE usuario_id = ? ORDER BY data_criacao DESC',
-        (session['usuario_id'],)
-    ).fetchall()
-    conn.close()
-
-    return render_template('historico.html', receitas=historico_receitas)
+    return render_template('historico.html')
 
 
 @app.route('/perfil')
@@ -227,7 +218,6 @@ def perfil():
 
 
 def _aquecer_gerador():
-    """Carrega o modelo de receitas em segundo plano no arranque do Flask."""
     try:
         from servicos.gerador_receita import obter_gerador
         obter_gerador()

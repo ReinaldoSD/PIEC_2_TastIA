@@ -138,6 +138,8 @@
                         <p id="textoForaInventario" class="mt-1"></p>
                     </div>
 
+                    <p id="textoSalva" class="mt-4 hidden text-sm"></p>
+
                     <div class="mt-6 flex flex-wrap gap-3">
                         <a href="{{ url_for('historico') }}" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
                             <i class="fa-solid fa-clock-rotate-left"></i> Ver no Histórico
@@ -164,6 +166,7 @@
         const avisoForaInventario = document.getElementById('avisoForaInventario');
         const textoForaInventario = document.getElementById('textoForaInventario');
         const btnSubmit = document.getElementById('btnSubmit');
+        const textoSalva = document.getElementById('textoSalva');
 
         formulario.addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -181,7 +184,7 @@
             }
 
             mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center gap-3';
-            mensagem.innerHTML = '<div class="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600"></div><span>A criar a sua receita com Inteligência Artificial... Por favor, aguarde alguns segundos.</span>';
+            mensagem.innerHTML = '<div class="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600"></div><span>A criar a sua receita com Inteligência Artificial... Isso pode levar alguns minutos, dependendo do computador do servidor.</span>';
             mensagem.classList.remove('hidden');
             resultado.classList.add('hidden');
             btnSubmit.disabled = true;
@@ -201,17 +204,21 @@
                     })
                 });
 
-                const data = await response.json();
+                let data = {};
+                try { data = await response.json(); } catch (e) { /* resposta sem JSON */ }
 
                 if (!response.ok) {
-                    throw new Error(data.erro || 'Erro ao gerar receita.');
+                    const erro = new Error(data.erro || ('Erro ao gerar receita (' + response.status + ').'));
+                    erro.dados = data;
+                    throw erro;
                 }
 
                 mensagem.classList.add('hidden');
 
                 // Converte a string em Markdown devolvida pela IA num HTML limpo e estruturado
                 if (window.marked) {
-                    conteudoReceita.innerHTML = marked.parse(data.receita);
+                    // escapa '<' para que a IA não consiga inserir tags HTML na página
+                    conteudoReceita.innerHTML = marked.parse(String(data.receita).replace(/</g, '&lt;'));
                 } else {
                     conteudoReceita.textContent = data.receita;
                 }
@@ -227,12 +234,29 @@
                     textoForaInventario.textContent = 'Itens identificados fora do inventário: ' + (data.fora_do_inventario ? data.fora_do_inventario.join(', ') : 'Nenhum');
                 }
 
+                textoSalva.classList.remove('hidden');
+                if (data.salva) {
+                    textoSalva.className = 'mt-4 text-sm text-green-700';
+                    textoSalva.textContent = '✓ Esta receita foi salva no seu histórico.';
+                } else {
+                    textoSalva.className = 'mt-4 text-sm text-amber-700';
+                    textoSalva.textContent = 'Esta receita não foi salva no histórico porque não passou na conferência com o seu inventário. Tente gerar outra.';
+                }
+
                 resultado.classList.remove('hidden');
                 resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             } catch (err) {
                 mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
                 mensagem.textContent = 'Erro: ' + err.message;
+                if (err.dados && err.dados.codigo === 'inventario_vazio' && err.dados.acao_url) {
+                    const link = document.createElement('a');
+                    link.href = err.dados.acao_url;
+                    link.className = 'ml-2 font-semibold underline';
+                    link.textContent = 'Cadastrar ingredientes';
+                    mensagem.appendChild(link);
+                }
+                if (err.dados && err.dados.detalhes) console.error('Detalhes do erro:', err.dados.detalhes);
                 mensagem.classList.remove('hidden');
             } finally {
                 btnSubmit.disabled = false;
