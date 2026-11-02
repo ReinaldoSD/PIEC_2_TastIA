@@ -1,6 +1,7 @@
 """Rotas HTTP da API de Bebidas (TastIA - Módulo do Reinaldo)."""
 from flask import Blueprint, jsonify, request, session
 from bebidas.recomendador import obter_recomendador
+from banco_dados.database import obter_conexao
 
 bp_bebida = Blueprint("bebida", __name__, url_prefix="/api/bebida")
 
@@ -41,3 +42,34 @@ def sugerir_bebida():
         return jsonify({"erro": str(e)}), 400
     except Exception as e:
         return jsonify({"erro": "Erro ao sugerir bebida.", "detalhes": str(e)}), 500
+
+
+@bp_bebida.post("/escolher")
+def escolher_bebida():
+    """Grava apenas a bebida escolhida pelo utilizador na tabela bebidas_sugeridas."""
+    if "usuario_id" not in session:
+        return _nao_autenticado()
+
+    dados = request.get_json(silent=True) or {}
+    nome_bebida = str(dados.get("nome_bebida", "")).strip()
+    justificativa = str(dados.get("justificativa", "")).strip()
+
+    if not nome_bebida:
+        return jsonify({"erro": "Nenhuma bebida foi informada."}), 400
+
+    try:
+        conn = obter_conexao()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO bebidas_sugeridas (usuario_id, nome_bebida, justificativa)
+            VALUES (?, ?, ?)
+            """,
+            (session["usuario_id"], nome_bebida, justificativa)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"mensagem": "Bebida escolhida e guardada com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"erro": "Erro ao guardar a bebida.", "detalhes": str(e)}), 500
