@@ -6,6 +6,199 @@
     <title>Bebidas | TastIA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== Resultado das bebidas (futurista) — estilo bbx-[cite: 31, 32] ===== */
+        .bbx-resultado { 
+            position: relative; 
+            isolation: isolate; 
+            overflow: hidden; 
+            border-radius: 28px; 
+            padding: 36px 28px 40px; 
+            color: #E8EDF7;
+            background: radial-gradient(900px 420px at 80% -10%, hsl(200 90% 30% / .45), transparent 62%),
+                        radial-gradient(700px 400px at 0% 110%, hsl(285 75% 30% / .35), transparent 60%), #060912;
+            box-shadow: 0 30px 70px -30px rgba(6, 9, 18, .7); 
+        }
+        .bbx-resultado *, .bbx-resultado *::before, .bbx-resultado *::after { 
+            box-sizing: border-box; 
+        }
+        .bbx-resultado::before { 
+            content: ""; 
+            position: absolute; 
+            inset: 0; 
+            z-index: -1;
+            background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+            background-size: 52px 52px; 
+            -webkit-mask-image: linear-gradient(180deg, #000, transparent 75%); 
+            mask-image: linear-gradient(180deg, #000, transparent 75%); 
+        }
+        .bbx-titulo { 
+            font-family: 'Sora', 'Inter', sans-serif; 
+            font-size: clamp(1.4rem, 2.6vw, 1.9rem); 
+            font-weight: 600; 
+            letter-spacing: -.02em; 
+        }
+        .bbx-sub { 
+            margin-top: 6px; 
+            color: #8F9AB2; 
+            font-size: .93rem; 
+        }
+        .bbx-perfil { 
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            gap: 8px; 
+            margin-top: 14px; 
+            color: #8F9AB2; 
+            font-size: .9rem; 
+        }
+        .bbx-perfil:empty { 
+            display: none; 
+        }
+        .bbx-chip { 
+            display: inline-flex; 
+            align-items: center;
+            gap: 5px;
+            border: 1px solid rgba(255,255,255,.12); 
+            border-radius: 999px; 
+            padding: 4px 12px; 
+            font-size: .8rem; 
+            color: #C9D2E6; 
+            background: rgba(255,255,255,.04); 
+            text-transform: capitalize; 
+        }
+
+        .bbx-trio { 
+            display: grid; 
+            gap: 22px; 
+            margin-top: 30px; 
+            grid-template-columns: 1fr; 
+        }
+        @media (min-width: 960px) {
+            .bbx-trio { 
+                grid-template-columns: repeat(3, 1fr); 
+                align-items: stretch; 
+                padding-top: 14px; 
+            }
+            .bbx-pos-0 { order: 2; } 
+            .bbx-pos-1 { order: 1; } 
+            .bbx-pos-2 { order: 3; }
+            .bbx-card.bbx-top { transform: translateY(-14px); }
+        }
+        @media (max-width: 640px) { 
+            .bbx-resultado { 
+                padding: 28px 16px 32px; 
+                border-radius: 22px; 
+            } 
+        }
+
+        .bbx-card { 
+            --h: 190; 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 14px; 
+            padding: 22px; 
+            border-radius: 24px;
+            border: 1px solid hsl(var(--h) 80% 62% / .28);
+            background: linear-gradient(180deg, hsl(var(--h) 70% 50% / .14), rgba(255,255,255,.03) 42%);
+            box-shadow: 0 34px 60px -38px hsl(var(--h) 95% 52% / .6); 
+        }
+        .bbx-card.bbx-top { 
+            border-color: hsl(var(--h) 95% 68% / .75); 
+            box-shadow: 0 0 46px -10px hsl(var(--h) 100% 60% / .5), 0 34px 60px -38px hsl(var(--h) 95% 52% / .7); 
+        }
+        .bbx-selo { 
+            position: absolute; 
+            top: 16px; 
+            left: 16px; 
+            border-radius: 999px; 
+            padding: 4px 12px; 
+            font-size: .78rem; 
+            font-weight: 600; 
+            color: #04121A; 
+            background: hsl(var(--h) 95% 66%); 
+        }
+        .bbx-palco { 
+            display: grid; 
+            place-items: center; 
+            height: 190px; 
+            border-radius: 16px; 
+            background: radial-gradient(120px 90px at 50% 88%, hsl(var(--h) 100% 60% / .28), transparent 70%); 
+        }
+        .bbx-glass { 
+            width: 116px; 
+            height: 164px; 
+            overflow: visible; 
+        }
+        .bbx-liq { 
+            transform: translateY(170px); 
+            transition: transform 1.5s cubic-bezier(.2,.8,.2,1) var(--delay, 0ms); 
+        }
+        .bbx-liq.bbx-on { 
+            transform: translateY(var(--y)); 
+        }
+        .bbx-wave { 
+            animation: bbx-onda 3.2s linear infinite; 
+        }
+        @keyframes bbx-onda { 
+            to { transform: translateX(-60px); } 
+        }
+        .bbx-nome { 
+            font-family: 'Sora', 'Inter', sans-serif; 
+            font-size: 1.35rem; 
+            font-weight: 600; 
+            line-height: 1.2; 
+            letter-spacing: -.02em; 
+        }
+        .bbx-chips { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 6px; 
+        }
+        .bbx-desc { 
+            color: #B7C1D6; 
+            font-size: .93rem; 
+            line-height: 1.6; 
+        }
+        .bbx-why { 
+            margin-top: auto; 
+            border-left: 2px solid hsl(var(--h) 95% 62%); 
+            border-radius: 4px 12px 12px 4px; 
+            background: rgba(6,9,18,.5); 
+            padding: 12px 14px; 
+        }
+        .bbx-why strong { 
+            display: block; 
+            font-size: .85rem; 
+            color: hsl(var(--h) 95% 74%); 
+            margin-bottom: 4px; 
+            font-weight: 600; 
+        }
+        .bbx-why p { 
+            font-size: .88rem; 
+            line-height: 1.55; 
+            color: #D4DCEC; 
+        }
+        .bbx-alerta { 
+            font-size: .82rem; 
+            color: #F5C97A; 
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .bbx-vazio { 
+            grid-column: 1 / -1; 
+            text-align: center; 
+            color: #8F9AB2; 
+            padding: 32px 0; 
+        }
+        @media (prefers-reduced-motion: reduce) { 
+            .bbx-liq { transition: none; } 
+            .bbx-wave { animation: none; } 
+        }
+    </style>
 </head>
 
 <body class="min-h-screen bg-blue-50 text-slate-800">
@@ -20,7 +213,7 @@
                     </div>
                     <h1 class="text-3xl font-bold md:text-4xl">Uma bebida para acompanhar</h1>
                     <p class="mx-auto mt-3 max-w-2xl text-slate-500">
-                        Informe qual refeição você vai preparar e escolha suas preferências para encontrar uma combinação.
+                        Informe qual refeição você vai preparar e escolha suas preferências para encontrar uma combinação perfeita.
                     </p>
                 </section>
 
@@ -40,22 +233,22 @@
                             <div>
                                 <label for="tipo" class="mb-2 block font-semibold">Tipo de bebida</label>
                                 <select id="tipo" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                    <option>Qualquer tipo</option>
-                                    <option>Sucos</option>
-                                    <option>Vitaminas</option>
-                                    <option>Chás e infusões</option>
-                                    <option>Bebidas cremosas</option>
-                                    <option>Bebidas sem álcool</option>
+                                    <option value="qualquer">Qualquer tipo</option>
+                                    <option value="suco">Sucos</option>
+                                    <option value="vitamina">Vitaminas</option>
+                                    <option value="cha">Chás e infusões</option>
+                                    <option value="cremosa">Bebidas cremosas</option>
+                                    <option value="sem_alcool">Bebidas sem álcool</option>
                                 </select>
                             </div>
 
                             <div>
                                 <label for="temperatura" class="mb-2 block font-semibold">Temperatura</label>
                                 <select id="temperatura" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                    <option>Qualquer temperatura</option>
-                                    <option>Gelada</option>
-                                    <option>Natural</option>
-                                    <option>Quente</option>
+                                    <option value="qualquer">Qualquer temperatura</option>
+                                    <option value="gelada">Gelada</option>
+                                    <option value="natural">Natural</option>
+                                    <option value="quente">Quente</option>
                                 </select>
                             </div>
                         </div>
@@ -67,19 +260,18 @@
 
                         <div id="mensagem" class="hidden rounded-xl border p-4 text-sm" role="status"></div>
 
-                        <button type="submit" class="flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-600 px-6 py-4 font-semibold text-white transition hover:bg-emerald-700">
+                        <button type="submit" id="btnSubmit" class="flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-600 px-6 py-4 font-semibold text-white transition hover:bg-emerald-700">
                             <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            Organizar preferências
+                            Sugerir Bebidas Harmonizadas
                         </button>
                     </form>
                 </section>
 
-                <section id="resultado" class="mt-8 hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-                    <h2 class="mb-4 text-xl font-bold">Resumo das preferências</h2>
-                    <div id="resumo" class="space-y-3 text-slate-600"></div>
-                    <p class="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
-                        Esta é uma prévia visual. As recomendações automáticas de bebidas ainda precisam ser conectadas à inteligência artificial.
-                    </p>
+                <section id="resultado" class="bbx-resultado mt-8 hidden" aria-live="polite">
+                    <h2 class="bbx-titulo"><i class="fa-solid fa-mug-hot text-emerald-400 mr-2"></i>Sugestões de harmonização</h2>
+                    <p class="bbx-sub">O nível do copo indica o grau de afinidade de cada bebida com a refeição.</p>
+                    <div id="perfilPrato" class="bbx-perfil"></div>
+                    <div id="listaBebidas" class="bbx-trio"></div>
                 </section>
 
                 <footer class="py-8 text-center text-sm text-slate-400">
@@ -90,52 +282,230 @@
     </div>
 
     <script>
+        // ==========================================
+        // RECUPERA DADOS SALVOS DO LOCALSTORAGE AO ABRIR
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            const refeicaoSalva = localStorage.getItem('tastia_sugestao_refeicao');
+            const ingredientesSalvos = localStorage.getItem('tastia_sugestao_ingredientes');
+
+            if (refeicaoSalva) {
+                document.getElementById('refeicao').value = refeicaoSalva;
+                localStorage.removeItem('tastia_sugestao_refeicao');
+            }
+
+            if (ingredientesSalvos) {
+                document.getElementById('ingredientes').value = ingredientesSalvos;
+                localStorage.removeItem('tastia_sugestao_ingredientes');
+            }
+        });
+        // ==========================================
+
         const formulario = document.getElementById('formBebida');
         const mensagem = document.getElementById('mensagem');
         const resultado = document.getElementById('resultado');
-        const resumo = document.getElementById('resumo');
+        const listaBebidas = document.getElementById('listaBebidas');
+        const btnSubmit = document.getElementById('btnSubmit');
 
-        formulario.addEventListener('submit', function(event) {
+        const MATIZ = { suco: 34, vitamina: 322, agua: 192, cha: 148, cafe: 22, refrigerante: 268, fermentado: 292, lacteo: 212 };
+        const COPO = 'M18 14H102L92 150Q91 158 83 158H37Q29 158 28 150Z';
+        const ONDA = 'M0 0Q15 -6 30 0T60 0T90 0T120 0T150 0T180 0T210 0T240 0V14H0Z';
+
+        function el(tag, cls, texto) {
+            const n = document.createElement(tag);
+            if (cls) n.className = cls;
+            if (texto !== undefined && texto !== null) n.textContent = String(texto);
+            return n;
+        }
+
+        function iconeTemp(temp) {
+            if (!temp) return '';
+            const t = temp.toLowerCase();
+            if (t.includes('gelad')) return '<i class="fa-regular fa-snowflake mr-1"></i>';
+            if (t.includes('quente')) return '<i class="fa-solid fa-fire mr-1"></i>';
+            return '<i class="fa-solid fa-temperature-half mr-1"></i>';
+        }
+
+        function chip(texto, htmlIcone = '') {
+            const span = el('span', 'bbx-chip');
+            if (htmlIcone) {
+                span.innerHTML = htmlIcone + String(texto);
+            } else {
+                span.textContent = String(texto);
+            }
+            return span;
+        }
+
+        function copoSVG(i) {
+            return `<svg class="bbx-glass" viewBox="0 0 120 170" aria-hidden="true">
+                <defs>
+                    <clipPath id="bbxCorte${i}"><path d="${COPO}"/></clipPath>
+                    <linearGradient id="bbxLiq${i}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" style="stop-color:hsl(var(--h) 95% 66%)"/>
+                        <stop offset="1" style="stop-color:hsl(var(--h) 90% 38%)"/>
+                    </linearGradient>
+                </defs>
+                <g clip-path="url(#bbxCorte${i})"><g class="bbx-liq" style="--y:0px">
+                    <rect x="-10" y="0" width="140" height="180" fill="url(#bbxLiq${i})"/>
+                    <path class="bbx-wave" d="${ONDA}" style="fill:hsl(var(--h) 95% 70%)" opacity=".9"/>
+                </g></g>
+                <path d="${COPO}" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/>
+                <path d="M32 26L37 138" stroke="rgba(255,255,255,.28)" stroke-width="3" stroke-linecap="round"/>
+            </svg>`;
+        }
+
+        function montarCard(b, i, maxPts) {
+            const card = el('article', 'bbx-card bbx-pos-' + i + (i === 0 ? ' bbx-top' : ''));
+            card.style.setProperty('--h', MATIZ[b.tipo] ?? 190);
+            if (i === 0) card.appendChild(el('span', 'bbx-selo', 'Melhor combinação'));
+
+            const palco = el('div', 'bbx-palco');
+            palco.innerHTML = copoSVG(i);
+            card.appendChild(palco);
+
+            const pts = Number(b.pontuacao) || 0;
+            const nivel = maxPts > 0 ? Math.max(0.2, Math.min(1, pts / maxPts)) : 0.5;
+            const liq = palco.querySelector('.bbx-liq');
+            liq.style.setProperty('--y', (150 - nivel * 124) + 'px');
+            liq.style.setProperty('--delay', (i * 160) + 'ms');
+
+            card.appendChild(el('h3', 'bbx-nome', b.nome));
+            
+            const chips = el('div', 'bbx-chips');
+            chips.appendChild(chip(String(b.tipo || '').replace(/_/g, ' ')));
+            if (b.temperatura) {
+                chips.appendChild(chip(b.temperatura, iconeTemp(b.temperatura)));
+            }
+            (b.tags || []).slice(0, 3).forEach(t => chips.appendChild(chip(String(t).replace(/_/g, ' '))));
+            card.appendChild(chips);
+
+            card.appendChild(el('p', 'bbx-desc', b.descricao));
+
+            const why = el('div', 'bbx-why');
+            why.appendChild(el('strong', null, 'Por que combina?'));
+            why.appendChild(el('p', null, b.justificativa));
+            card.appendChild(why);
+
+            if (b.alerta) {
+                const alertaP = el('p', 'bbx-alerta');
+                alertaP.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ' + String(b.alerta);
+                card.appendChild(alertaP);
+            }
+
+            const btnEscolher = document.createElement('button');
+            btnEscolher.type = 'button';
+            btnEscolher.className = 'mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 px-4 py-3 font-semibold text-emerald-300 transition hover:bg-emerald-500 hover:text-slate-950';
+            btnEscolher.innerHTML = '<i class="fa-solid fa-check"></i> Escolher esta bebida';
+            
+            btnEscolher.addEventListener('click', async () => {
+                btnEscolher.disabled = true;
+                btnEscolher.innerHTML = '<div class="h-4 w-4 animate-spin rounded-full border-2 border-emerald-300 border-t-transparent"></div> A guardar...';
+                try {
+                    const resp = await fetch('/api/bebida/escolher', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nome_bebida: b.nome, justificativa: b.justificativa })
+                    });
+                    const resData = await resp.json();
+                    if (!resp.ok) throw new Error(resData.erro || 'Erro ao guardar a bebida.');
+                    
+                    btnEscolher.className = 'mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition';
+                    btnEscolher.innerHTML = '<i class="fa-solid fa-check-double"></i> Bebida guardada!';
+                } catch (err) {
+                    alert('Erro: ' + err.message);
+                    btnEscolher.disabled = false;
+                    btnEscolher.innerHTML = '<i class="fa-solid fa-check"></i> Escolher esta bebida';
+                }
+            });
+            card.appendChild(btnEscolher);
+
+            return card;
+        }
+
+        function renderizarBebidas(data) {
+            const lista = document.getElementById('listaBebidas');
+            const perfil = document.getElementById('perfilPrato');
+            lista.replaceChildren();
+            perfil.replaceChildren();
+
+            const bebidas = data.bebidas || [];
+            if (!bebidas.length) {
+                lista.appendChild(el('p', 'bbx-vazio', 'Nenhuma bebida encontrada para os filtros selecionados.'));
+                return;
+            }
+
+            if ((data.perfil_prato || []).length) {
+                perfil.appendChild(el('span', null, 'Perfil identificado no prato:'));
+                data.perfil_prato.forEach(t => perfil.appendChild(chip(String(t).replace(/_/g, ' '))));
+            }
+            if (data.aviso) perfil.appendChild(el('span', 'text-amber-400 font-semibold', data.aviso));
+
+            const maxPts = Math.max(...bebidas.map(b => Number(b.pontuacao) || 0));
+            bebidas.slice(0, 3).forEach((b, i) => lista.appendChild(montarCard(b, i, maxPts)));
+            
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                lista.querySelectorAll('.bbx-liq').forEach(l => l.classList.add('bbx-on'));
+            }));
+        }
+
+        formulario.addEventListener('submit', async function(event) {
             event.preventDefault();
 
             const refeicao = document.getElementById('refeicao').value.trim();
+            const ingredientes = document.getElementById('ingredientes').value.trim();
+            const tipo = document.getElementById('tipo').value;
+            const temperatura = document.getElementById('temperatura').value;
+            const preferencias = document.getElementById('preferencias').value.trim();
 
             if (!refeicao) {
                 mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
                 mensagem.textContent = 'Informe qual refeição você vai preparar.';
+                mensagem.classList.remove('hidden');
                 return;
             }
 
-            mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800';
-            mensagem.textContent = 'Preferências organizadas. As recomendações automáticas ainda precisam ser conectadas.';
+            mensagem.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center gap-3';
+            mensagem.innerHTML = '<div class="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600"></div><span>A analisar harmonização de bebidas não alcoólicas...</span>';
+            mensagem.classList.remove('hidden');
+            resultado.classList.add('hidden');
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
 
-            resumo.replaceChildren();
+            try {
+                const response = await fetch('/api/bebida/sugerir', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refeicao,
+                        ingredientes,
+                        tipo,
+                        temperatura,
+                        preferencias
+                    })
+                });
 
-            const dados = [
-                ['Refeição', refeicao],
-                ['Ingredientes principais', document.getElementById('ingredientes').value.trim() || 'Não informados'],
-                ['Tipo de bebida', document.getElementById('tipo').value],
-                ['Temperatura', document.getElementById('temperatura').value],
-                ['Outras preferências', document.getElementById('preferencias').value.trim() || 'Não informadas']
-            ];
+                const data = await response.json();
 
-            dados.forEach(function(item) {
-                const bloco = document.createElement('div');
-                const titulo = document.createElement('p');
-                const valor = document.createElement('p');
+                if (!response.ok) {
+                    throw new Error(data.erro || 'Erro ao sugerir bebidas.');
+                }
 
-                titulo.className = 'text-sm font-semibold text-slate-800';
-                titulo.textContent = item[0];
+                mensagem.classList.add('hidden');
+                renderizarBebidas(data);
 
-                valor.className = 'whitespace-pre-wrap break-words';
-                valor.textContent = item[1];
+                resultado.classList.remove('hidden');
+                resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-                bloco.append(titulo, valor);
-                resumo.appendChild(bloco);
-            });
-
-            resultado.classList.remove('hidden');
-            resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (err) {
+                mensagem.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
+                mensagem.textContent = 'Erro: ' + err.message;
+                mensagem.classList.remove('hidden');
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         });
     </script>
 </body>
