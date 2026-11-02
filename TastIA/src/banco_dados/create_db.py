@@ -38,13 +38,16 @@ def criar_tabelas():
         )
     ''')
 
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bebidas_sugeridas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            receita_id INTEGER NOT NULL,
+            usuario_id INTEGER NOT NULL,
+            receita_id INTEGER,
             nome_bebida TEXT NOT NULL,
             justificativa TEXT NOT NULL,
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id),
             FOREIGN KEY (receita_id) REFERENCES receitas (id)
         )
     ''')
@@ -55,4 +58,3 @@ def criar_tabelas():
 if __name__ == '__main__':
     criar_tabelas()
     print("Base de dados e tabelas criadas com sucesso!")
-    
