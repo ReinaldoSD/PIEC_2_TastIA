@@ -6,6 +6,7 @@ from PIL import Image, UnidentifiedImageError
 
 from banco_dados.database import obter_conexao
 from percepcao.pipeline import obter_pipeline
+from servicos.fila import obter_fila, ESTADO_CONCLUIDO, ESTADO_ERRO, ESTADO_PENDENTE
 
 bp_ingrediente = Blueprint("ingrediente", __name__, url_prefix="/api/ingredientes")
 
@@ -26,7 +27,6 @@ def detectar_ingredientes():
     if "usuario_id" not in session:
         return _nao_autenticado()
 
-    # 1. Verifica se o campo 'imagem' veio na requisição multipart/form-data
     if "imagem" not in request.files:
         return jsonify({"erro": "Nenhuma imagem foi enviada na requisição."}), 400
 
@@ -34,13 +34,11 @@ def detectar_ingredientes():
     if not arquivo or not arquivo.filename or arquivo.filename.strip() == "":
         return jsonify({"erro": "Arquivo de imagem vazio ou não selecionado."}), 400
 
-    # 2. Valida extensão do arquivo
     if not _extensao_valida(arquivo.filename):
         return jsonify({
             "erro": "Formato de imagem inválido. Envie PNG, JPG, JPEG ou WEBP."
         }), 400
 
-    # 3. Lê os bytes e valida tamanho e integridade real da imagem com Pillow
     conteudo = arquivo.read()
     if not conteudo:
         return jsonify({"erro": "O arquivo enviado está vazio (0 bytes)."}), 400
@@ -49,15 +47,24 @@ def detectar_ingredientes():
         return jsonify({"erro": "A imagem excede o tamanho máximo permitido de 10 MB."}), 400
 
     try:
-        # Verifica se os bytes formam uma imagem válida e não um arquivo corrompido/falso
         img_teste = Image.open(io.BytesIO(conteudo))
         img_teste.verify()
-        # Reabre após o verify() para uso no pipeline
         imagem = Image.open(io.BytesIO(conteudo)).convert("RGB")
     except (UnidentifiedImageError, OSError, ValueError):
         return jsonify({"erro": "Arquivo inválido ou imagem corrompida."}), 400
 
-    # 4. Executa o Pipeline (Florence-2 + CLIP + Plano B)
+    assincrono = request.form.get("assincrono", "false").lower() == "true"
+
+    if assincrono:
+        fila = obter_fila()
+
+        def _tarefa_deteccao():
+            pipeline = obter_pipeline()
+            return pipeline.executar(imagem)
+
+        tarefa_id = fila.submeter(_tarefa_deteccao)
+        return jsonify({"tarefa_id": tarefa_id, "status": ESTADO_PENDENTE}), 202
+
     try:
         pipeline = obter_pipeline()
         resultado = pipeline.executar(imagem)
@@ -67,6 +74,24 @@ def detectar_ingredientes():
             "erro": "Erro interno ao processar a imagem nos modelos de IA.",
             "detalhes": str(e)
         }), 500
+
+
+@bp_ingrediente.get("/status/<tarefa_id>")
+def status_tarefa_ingrediente(tarefa_id: str):
+    if "usuario_id" not in session:
+        return _nao_autenticado()
+
+    fila = obter_fila()
+    info = fila.obter_status(tarefa_id)
+    if not info:
+        return jsonify({"erro": "Tarefa não encontrada."}), 404
+
+    if info["status"] == ESTADO_CONCLUIDO:
+        return jsonify({"status": info["status"], "resultado": info["resultado"]}), 200
+    elif info["status"] == ESTADO_ERRO:
+        return jsonify({"status": info["status"], "erro": info["erro"]}), 500
+    else:
+        return jsonify({"status": info["status"]}), 200
 
 
 @bp_ingrediente.post("/salvar_lote")
