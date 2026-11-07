@@ -151,25 +151,74 @@ def cadastrar_ingrediente():
     if 'usuario_id' not in session:
         flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
-        
+
     if request.method == 'POST':
-        nome = request.form.get('nome')
-        categoria = request.form.get('categoria')
-        quantidade = request.form.get('quantidade')
+        from rotas.ingrediente import _formatar_qtd_unidade, _buscar_duplicado
+        nome = (request.form.get('nome') or '').strip()
+        categoria = (request.form.get('categoria') or 'Outros').strip()
+        quantidade = (request.form.get('quantidade') or '').strip()
+        unidade = (request.form.get('unidade') or '').strip()
         validade = request.form.get('validade') or None
 
+        if not nome or not quantidade:
+            flash('Informe o nome e a quantidade do ingrediente.', 'erro')
+            return redirect(url_for('cadastrar_ingrediente'))
+
         conn = obter_conexao()
+        duplicado = _buscar_duplicado(conn, session['usuario_id'], nome)
+        if duplicado:
+            conn.close()
+            flash(f"O ingrediente '{duplicado['nome']}' já está cadastrado no seu inventário.", 'erro')
+            return redirect(url_for('cadastrar_ingrediente'))
+
+        qtd_final, unid_final = _formatar_qtd_unidade(quantidade, unidade)
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO inventario (usuario_id, nome, categoria, quantidade, validade) VALUES (?, ?, ?, ?, ?)',
-            (session['usuario_id'], nome, categoria, quantidade, validade)
+            'INSERT INTO inventario (usuario_id, nome, categoria, quantidade, unidade, validade) VALUES (?, ?, ?, ?, ?, ?)',
+            (session['usuario_id'], nome, categoria, qtd_final, unid_final, validade)
         )
         conn.commit()
         conn.close()
+
         flash('Ingrediente cadastrado com sucesso!', 'sucesso')
         return redirect(url_for('inventario'))
 
     return render_template('cadastrar_ingrediente.html')
+@app.route('/editar_ingrediente/<int:item_id>', methods=['POST'])
+def editar_ingrediente(item_id):
+    if 'usuario_id' not in session:
+        flash('Faça login para continuar.', 'erro')
+        return redirect(url_for('login'))
+
+    from rotas.ingrediente import _formatar_qtd_unidade, _buscar_duplicado
+    nome = (request.form.get('nome') or '').strip()
+    categoria = (request.form.get('categoria') or 'Outros').strip()
+    quantidade = (request.form.get('quantidade') or '').strip()
+    unidade = (request.form.get('unidade') or '').strip()
+    validade = request.form.get('validade') or None
+
+    if not nome or not quantidade:
+        flash('Nome e quantidade são obrigatórios.', 'erro')
+        return redirect(url_for('inventario'))
+
+    conn = obter_conexao()
+    conflito = _buscar_duplicado(conn, session['usuario_id'], nome, ignorar_id=item_id)
+    if conflito:
+        conn.close()
+        flash(f"Já existe outro ingrediente com o nome '{conflito['nome']}' no seu inventário.", 'erro')
+        return redirect(url_for('inventario'))
+
+    qtd_final, unid_final = _formatar_qtd_unidade(quantidade, unidade)
+    conn.execute(
+        '''UPDATE inventario
+           SET nome = ?, categoria = ?, quantidade = ?, unidade = ?, validade = ?, atualizado_em = CURRENT_TIMESTAMP
+           WHERE id = ? AND usuario_id = ?''',
+        (nome, categoria, qtd_final, unid_final, validade, item_id, session['usuario_id'])
+    )
+    conn.commit()
+    conn.close()
+    flash('Ingrediente atualizado com sucesso!', 'sucesso')
+    return redirect(url_for('inventario'))
 
 
 @app.route('/excluir_ingrediente/<int:item_id>', methods=['POST'])

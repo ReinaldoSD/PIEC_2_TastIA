@@ -53,19 +53,16 @@
                             </button>
                         </div>
 
-                        <!-- Pré-visualização da foto -->
                         <div id="previewContainer" class="hidden">
                             <img id="imgPreview" src="" alt="Prévia da foto" class="max-h-56 rounded-xl border border-slate-200 object-contain">
                         </div>
 
-                        <!-- Mensagem de status / erro 400 / aviso Plano B -->
                         <div id="msgDeteccao" class="hidden rounded-xl border p-4 text-sm"></div>
 
-                        <!-- Lista editável de ingredientes detectados para confirmação do usuário -->
                         <div id="areaConfirmacao" class="hidden space-y-4 border-t border-slate-100 pt-4">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-sm font-bold text-slate-700">
-                                    Confirme ou corrija os ingredientes encontrados:
+                                    Marque e corrija os ingredientes que deseja confirmar:
                                 </h3>
                                 <button type="button" id="btnAdicionarLinha" class="text-xs font-semibold text-blue-600 hover:underline">
                                     + Adicionar linha
@@ -77,7 +74,7 @@
                             <button type="button" id="btnSalvarLote"
                                 class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700">
                                 <i class="fa-solid fa-check"></i>
-                                Confirmar e salvar no inventário
+                                Confirmar selecionados e salvar no inventário
                             </button>
                         </div>
                     </div>
@@ -105,9 +102,23 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="quantidade" class="mb-2 block text-sm font-semibold">Quantidade</label>
-                            <input type="text" id="quantidade" name="quantidade" placeholder="Ex.: 2 unidades, 500 g, 1 litro" required maxlength="50" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="quantidade" class="mb-2 block text-sm font-semibold">Quantidade</label>
+                                <input type="text" id="quantidade" name="quantidade" placeholder="Ex.: 2, 500, 1" required maxlength="30" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                            </div>
+                            <div>
+                                <label for="unidade" class="mb-2 block text-sm font-semibold">Unidade</label>
+                                <select id="unidade" name="unidade" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <option value="unidades">Unidade(s)</option>
+                                    <option value="g">Gramas (g)</option>
+                                    <option value="kg">Quilos (kg)</option>
+                                    <option value="ml">Mililitros (ml)</option>
+                                    <option value="litro">Litro(s)</option>
+                                    <option value="pacote">Pacote(s)</option>
+                                    <option value="caixa">Caixa(s)</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div>
@@ -171,16 +182,19 @@
             ).join('');
 
             div.innerHTML = `
+                <div class="sm:col-span-1 flex items-center justify-center">
+                    <input type="checkbox" checked class="ing-marcado h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" title="Confirmar este item">
+                </div>
                 <div class="sm:col-span-4">
                     <input type="text" value="${item.nome}" placeholder="Nome" class="ing-nome w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                 </div>
-                <div class="sm:col-span-4">
+                <div class="sm:col-span-3">
                     <select class="ing-cat w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                         ${opcoesCat}
                     </select>
                 </div>
                 <div class="sm:col-span-3">
-                    <input type="text" value="${item.quantidade}" placeholder="Qtd" class="ing-qtd w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <input type="text" value="${item.quantidade}" placeholder="Qtd (ex: 2 un)" class="ing-qtd w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                 </div>
                 <div class="sm:col-span-1 flex justify-end">
                     <button type="button" class="btn-remover text-red-500 hover:text-red-700 p-2" title="Remover">
@@ -194,6 +208,17 @@
 
         btnAdicionarLinha.addEventListener('click', () => criarLinhaIngrediente());
 
+        async function aguardarTarefaFila(tarefaId) {
+            while (true) {
+                await new Promise(r => setTimeout(r, 1500));
+                const resp = await fetch(`/api/ingredientes/status/${tarefaId}`);
+                const info = await resp.json();
+                if (!resp.ok) throw new Error(info.erro || 'Erro ao consultar fila de tarefas.');
+                if (info.status === 'concluido') return info.resultado;
+                if (info.status === 'erro') throw new Error(info.erro || 'Erro no processamento da imagem.');
+            }
+        }
+
         btnDetectar.addEventListener('click', async () => {
             const file = inputImagem.files[0];
             if (!file) {
@@ -205,6 +230,7 @@
 
             const formData = new FormData();
             formData.append('imagem', file);
+            formData.append('assincrono', 'true');
 
             btnDetectar.disabled = true;
             msgDeteccao.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center gap-3';
@@ -217,10 +243,15 @@
                     method: 'POST',
                     body: formData
                 });
-                const dados = await resp.json();
+                let dados = await resp.json();
 
                 if (!resp.ok) {
                     throw new Error(dados.erro || 'Falha ao processar imagem.');
+                }
+
+                // Se entrou na fila em segundo plano (HTTP 202), aguarda concluir
+                if (resp.status === 202 && dados.tarefa_id) {
+                    dados = await aguardarTarefaFila(dados.tarefa_id);
                 }
 
                 listaDetectados.replaceChildren();
@@ -246,19 +277,20 @@
         btnSalvarLote.addEventListener('click', async () => {
             const linhas = [...document.querySelectorAll('.linha-detectada')];
             const itens = linhas.map(l => ({
+                marcado: l.querySelector('.ing-marcado').checked,
                 nome: l.querySelector('.ing-nome').value.trim(),
                 categoria: l.querySelector('.ing-cat').value,
                 quantidade: l.querySelector('.ing-qtd').value.trim() || '1 unidade'
-            })).filter(i => i.nome.length > 0);
+            })).filter(i => i.marcado && i.nome.length > 0);
 
             if (itens.length === 0) {
-                alert('Adicione pelo menos um ingrediente com nome válido.');
+                alert('Marque pelo menos um ingrediente com nome válido para confirmar.');
                 return;
             }
 
             btnSalvarLote.disabled = true;
             try {
-                const resp = await fetch('/api/ingredientes/salvar_lote', {
+                const resp = await fetch('/api/ingredientes/confirmar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ itens })
