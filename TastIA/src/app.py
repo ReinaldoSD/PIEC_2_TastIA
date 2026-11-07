@@ -8,6 +8,7 @@ from banco_dados.database import obter_conexao
 from rotas.receita import bp_receita
 from rotas.bebida import bp_bebida
 from rotas.ingrediente import bp_ingrediente
+from servicos.fila import obter_fila
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -90,6 +91,7 @@ def login():
         if usuario and check_password_hash(usuario['senha_hash'], senha):
             session['usuario_id'] = usuario['id']
             session['usuario_nome'] = usuario['nome']
+            session['usuario_email'] = usuario['email']
             flash('Login efetuado com sucesso!', 'sucesso')
             return redirect(url_for('dashboard'))
         else:
@@ -169,6 +171,7 @@ def cadastrar_ingrediente():
 
     return render_template('cadastrar_ingrediente.html')
 
+
 @app.route('/excluir_ingrediente/<int:item_id>', methods=['POST'])
 def excluir_ingrediente(item_id):
     if 'usuario_id' not in session:
@@ -184,6 +187,7 @@ def excluir_ingrediente(item_id):
     conn.close()
     flash('Ingrediente removido com sucesso!', 'sucesso')
     return redirect(url_for('inventario'))
+
 
 @app.route('/receitas')
 def receitas():
@@ -209,12 +213,106 @@ def historico():
     return render_template('historico.html')
 
 
+# --------------------------------------------------------------------------- #
+# ROTAS DO PERFIL COM VALIDAÇÃO E ATUALIZAÇÃO NO BANCO DE DADOS
+# --------------------------------------------------------------------------- #
 @app.route('/perfil')
 def perfil():
     if 'usuario_id' not in session:
         flash('Faça login para continuar.', 'erro')
         return redirect(url_for('login'))
-    return render_template('perfil.html')
+    
+    conn = obter_conexao()
+    usuario = conn.execute('SELECT nome FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    conn.close()
+    
+    return render_template('perfil.html', usuario=usuario)
+
+
+@app.route('/perfil/confirmar', methods=['POST'])
+def confirmar_identidade():
+    if 'usuario_id' not in session:
+        flash('Faça login para continuar.', 'erro')
+        return redirect(url_for('login'))
+        
+    senha = request.form.get('senha_confirmacao', '')
+    if not senha:
+        flash('Por favor, informe a sua senha atual para confirmar.', 'erro')
+        return redirect(url_for('perfil'))
+        
+    conn = obter_conexao()
+    cursor = conn.cursor()
+    usuario = cursor.execute('SELECT senha_hash FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    conn.close()
+    
+    if usuario and check_password_hash(usuario['senha_hash'], senha):
+        session['perfil_autorizado'] = True
+        flash('Identidade confirmada! Agora você pode alterar seu nome de usuário ou senha.', 'sucesso')
+    else:
+        flash('Senha incorreta. Confirmação negada.', 'erro')
+        
+    return redirect(url_for('perfil'))
+
+
+@app.route('/perfil/atualizar_nome', methods=['POST'])
+def atualizar_nome():
+    if 'usuario_id' not in session:
+        flash('Faça login para continuar.', 'erro')
+        return redirect(url_for('login'))
+        
+    if not session.get('perfil_autorizado'):
+        flash('Você precisa confirmar sua senha antes de alterar os dados.', 'erro')
+        return redirect(url_for('perfil'))
+    
+    novo_nome = request.form.get('nome', '').strip()
+    
+    if not novo_nome:
+        flash('O nome de usuário não pode estar vazio.', 'erro')
+        return redirect(url_for('perfil'))
+        
+    conn = obter_conexao()
+    cursor = conn.cursor()
+    cursor.execute(
+        'UPDATE usuarios SET nome = ? WHERE id = ?', 
+        (novo_nome, session['usuario_id'])
+    )
+    conn.commit()
+    conn.close()
+    
+    session['usuario_nome'] = novo_nome
+    session.pop('perfil_autorizado', None)  # Revoga a autorização por segurança após guardar no BD
+    
+    flash('Nome de usuário atualizado com sucesso no banco de dados!', 'sucesso')
+    return redirect(url_for('perfil'))
+
+
+@app.route('/perfil/senha', methods=['POST'])
+def alterar_senha():
+    if 'usuario_id' not in session:
+        flash('Faça login para continuar.', 'erro')
+        return redirect(url_for('login'))
+        
+    if not session.get('perfil_autorizado'):
+        flash('Você precisa confirmar sua senha antes de alterar a senha.', 'erro')
+        return redirect(url_for('perfil'))
+        
+    nova_senha = request.form.get('nova_senha', '')
+    
+    if not nova_senha or len(nova_senha) < 8:
+        flash('A nova senha deve ter pelo menos 8 caracteres.', 'erro')
+        return redirect(url_for('perfil'))
+        
+    conn = obter_conexao()
+    cursor = conn.cursor()
+    novo_hash = generate_password_hash(nova_senha)
+    cursor.execute('UPDATE usuarios SET senha_hash = ? WHERE id = ?', (novo_hash, session['usuario_id']))
+    conn.commit()
+    conn.close()
+    
+    session.pop('perfil_autorizado', None)  # Revoga a autorização por segurança após guardar no BD
+    
+    flash('Senha alterada com sucesso no banco de dados!', 'sucesso')
+    return redirect(url_for('perfil'))
 
 
 def _aquecer_gerador():
@@ -227,5 +325,6 @@ def _aquecer_gerador():
 
 
 if __name__ == '__main__':
+    obter_fila()
     threading.Thread(target=_aquecer_gerador, daemon=True).start()
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)
