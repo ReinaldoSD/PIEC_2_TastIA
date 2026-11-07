@@ -1,6 +1,5 @@
 """Rotas da API de receitas (telas templates/receitas.html e templates/historico.html)."""
 import re
-
 from flask import Blueprint, current_app, jsonify, request, session, url_for
 from werkzeug.routing import BuildError
 
@@ -8,6 +7,7 @@ from banco_dados.database import obter_conexao
 from receitas.gerador import InventarioVazioError, gerar_receita, preparar_inventario
 from receitas.historico import montar_item_historico
 from receitas.validador import normalizar_texto
+from servicos.fila import obter_fila, ESTADO_CONCLUIDO, ESTADO_ERRO, ESTADO_PENDENTE, ESTADO_PROCESSANDO
 
 bp_receita = Blueprint("receita", __name__, url_prefix="/api/receita")
 
@@ -104,6 +104,40 @@ def gerar():
             "'Ingredientes que você tem'."
         )
 
+    # Se o cliente solicitar execução via Fila em Segundo Plano
+    assincrono = dados.get("assincrono", False)
+    if assincrono:
+        fila = obter_fila()
+        usuario_id = session["usuario_id"]
+
+        def _tarefa_geracao():
+            r = gerar_receita(itens, pedido, tempo, dificuldade, restricoes, evitar)
+            receita_id = None
+            if r.valida:
+                try:
+                    conn = obter_conexao()
+                    try:
+                        cur = conn.execute(
+                            "INSERT INTO receitas (usuario_id, pedido, conteudo) VALUES (?, ?, ?)",
+                            (usuario_id, pedido, r.texto),
+                        )
+                        conn.commit()
+                        receita_id = cur.lastrowid
+                    finally:
+                        conn.close()
+                except Exception:
+                    current_app.logger.exception("Falha ao salvar a receita no histórico")
+
+            resposta = r.como_dict()
+            resposta["receita"] = resposta.pop("texto")
+            resposta["receita_id"] = receita_id
+            resposta["salva"] = receita_id is not None
+            return resposta
+
+        tarefa_id = fila.submeter(_tarefa_geracao)
+        return jsonify({"tarefa_id": tarefa_id, "status": ESTADO_PENDENTE}), 202
+
+    # Execução Síncrona Tradicional
     try:
         r = gerar_receita(itens, pedido, tempo, dificuldade, restricoes, evitar)
     except InventarioVazioError as e:  # ex.: todos os itens vencidos
@@ -118,7 +152,7 @@ def gerar():
         current_app.logger.exception("Falha ao gerar receita")
         return jsonify({"erro": "Não foi possível gerar a receita agora.", "detalhes": str(e)}), 500
 
-    # Só receitas conferidas (sem ingredientes fora do inventário) entram no histórico.
+    # Salva no banco de dados se for válida
     receita_id = None
     if r.valida:
         try:
@@ -140,6 +174,27 @@ def gerar():
     resposta["receita_id"] = receita_id
     resposta["salva"] = receita_id is not None
     return jsonify(resposta)
+
+
+# --------------------------------------------------------------------------- #
+# Rota para consultar o Status de uma Tarefa em Segundo Plano
+# --------------------------------------------------------------------------- #
+@bp_receita.get("/status/<tarefa_id>")
+def status_tarefa_receita(tarefa_id: str):
+    if "usuario_id" not in session:
+        return _nao_autenticado()
+
+    fila = obter_fila()
+    info = fila.obter_status(tarefa_id)
+    if not info:
+        return jsonify({"erro": "Tarefa não encontrada."}), 404
+
+    if info["status"] == ESTADO_CONCLUIDO:
+        return jsonify({"status": info["status"], "resultado": info["resultado"]}), 200
+    elif info["status"] == ESTADO_ERRO:
+        return jsonify({"status": info["status"], "erro": info["erro"]}), 500
+    else:
+        return jsonify({"status": info["status"]}), 200
 
 
 # --------------------------------------------------------------------------- #
