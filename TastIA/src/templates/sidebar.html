@@ -1,4 +1,4 @@
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -15,8 +15,6 @@
 
     .tastia-sidebar::-webkit-scrollbar {
         display: none;
-        width: 0;
-        height: 0;
     }
 
     .tastia-sidebar:hover,
@@ -69,14 +67,14 @@
     }
 
     .tastia-link:hover {
-        background: rgba(255, 255, 255, .09);
+        background: rgba(255,255,255,.09);
         color: white;
     }
 
     .tastia-link.ativo {
         background: linear-gradient(100deg, #2563eb, #0284c7);
         color: white;
-        box-shadow: 0 6px 18px rgba(37, 99, 235, .2);
+        box-shadow: 0 6px 18px rgba(37,99,235,.2);
     }
 
     .tastia-link .icone {
@@ -118,8 +116,8 @@
         padding: 0;
         overflow: hidden;
         border-radius: 14px;
-        background: rgba(255, 255, 255, .06);
-        transition: width .25s ease, height .25s ease, background .2s ease;
+        background: rgba(255,255,255,.06);
+        transition: width .25s ease, height .25s ease;
     }
 
     .tastia-sidebar .sidebar-user > div:first-child {
@@ -218,6 +216,15 @@
             transform: translateY(0) scale(1);
         }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+        .tastia-sidebar,
+        .tastia-link,
+        .tastia-modal {
+            transition: none;
+            animation: none;
+        }
+    }
 </style>
 
 <header class="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
@@ -226,7 +233,7 @@
         <span class="text-xl font-extrabold text-slate-800">Tast<span class="text-blue-600">IA</span></span>
     </a>
 
-    <button type="button" id="tastia-abrir-menu" aria-label="Abrir menu" class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-blue-50 hover:text-blue-600">
+    <button type="button" id="tastia-abrir-menu" aria-label="Abrir menu" aria-expanded="false" class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-blue-50 hover:text-blue-600">
         <i class="fa-solid fa-bars text-xl"></i>
     </button>
 </header>
@@ -238,6 +245,7 @@
     <div class="sidebar-brand mb-9 flex h-12 items-center gap-3 px-4">
         <a href="{{ url_for('dashboard') }}" class="flex min-w-0 items-center gap-3">
             <img src="{{ url_for('static', filename='imagens/logo.png') }}" alt="Logo TastIA" class="h-11 w-11 shrink-0 rounded-xl bg-white object-contain p-1">
+
             <div class="sidebar-text">
                 <span class="block text-2xl font-extrabold">Tast<span class="text-sky-400">IA</span></span>
                 <span class="sidebar-subtitle block text-[10px] uppercase tracking-wider text-slate-400">Sua cozinha inteligente</span>
@@ -256,9 +264,14 @@
             <span class="sidebar-text">Página inicial</span>
         </a>
 
-        <a href="{{ url_for('inventario') }}" title="Meu inventário" class="tastia-link {{ 'ativo' if request.endpoint in ['inventario', 'cadastrar_ingrediente'] else '' }}">
+        <a href="{{ url_for('inventario') }}" title="Meu inventário" class="tastia-link {{ 'ativo' if request.endpoint == 'inventario' else '' }}">
             <span class="icone"><i class="fa-solid fa-boxes-stacked"></i></span>
             <span class="sidebar-text">Meu inventário</span>
+        </a>
+
+        <a href="{{ url_for('cadastrar_ingrediente') }}" title="Cadastrar ingredientes" class="tastia-link {{ 'ativo' if request.endpoint == 'cadastrar_ingrediente' else '' }}">
+            <span class="icone"><i class="fa-solid fa-circle-plus"></i></span>
+            <span class="sidebar-text">Cadastrar ingredientes</span>
         </a>
 
         <a href="{{ url_for('receitas') }}" title="Receitas" class="tastia-link {{ 'ativo' if request.endpoint == 'receitas' else '' }}">
@@ -287,6 +300,7 @@
     </nav>
 
     <div class="sidebar-footer mt-6 border-t border-white/10 px-3 pt-5">
+
         <div class="sidebar-user">
             <div class="rounded-full bg-blue-500/20 text-blue-300">
                 <i class="fa-solid fa-user"></i>
@@ -307,6 +321,7 @@
 
 <div id="tastia-modal-sair" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="tastia-titulo-sair">
     <div class="tastia-modal w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+
         <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
             <i class="fa-solid fa-right-from-bracket text-2xl"></i>
         </div>
@@ -320,6 +335,7 @@
         </p>
 
         <div class="mt-6 flex gap-3">
+
             <button type="button" id="tastia-cancelar-sair" class="flex-1 rounded-xl border border-slate-200 px-4 py-3 font-semibold text-slate-600 transition hover:bg-slate-50">
                 Cancelar
             </button>
@@ -327,6 +343,7 @@
             <a href="{{ url_for('logout') }}" class="flex-1 rounded-xl bg-red-500 px-4 py-3 text-center font-semibold text-white transition hover:bg-red-600">
                 Sim, sair
             </a>
+
         </div>
     </div>
 </div>
@@ -340,18 +357,25 @@
         const cancelarSair = document.getElementById('tastia-cancelar-sair');
         const modalSair = document.getElementById('tastia-modal-sair');
 
+        function fecharMenu() {
+            if (!sidebar || !overlay) return;
+
+            sidebar.classList.remove('menu-aberto');
+            overlay.classList.add('hidden');
+            document.body.style.overflow = '';
+
+            if (abrir) {
+                abrir.setAttribute('aria-expanded', 'false');
+            }
+        }
+
         if (sidebar && overlay && abrir) {
             abrir.addEventListener('click', () => {
                 sidebar.classList.add('menu-aberto');
                 overlay.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                abrir.setAttribute('aria-expanded', 'true');
             });
-
-            function fecharMenu() {
-                sidebar.classList.remove('menu-aberto');
-                overlay.classList.add('hidden');
-                document.body.style.overflow = '';
-            }
 
             overlay.addEventListener('click', fecharMenu);
 
@@ -373,6 +397,7 @@
 
         function fecharModalSair() {
             if (!modalSair) return;
+
             modalSair.classList.add('hidden');
             modalSair.classList.remove('flex');
         }
@@ -391,6 +416,7 @@
             document.addEventListener('keydown', evento => {
                 if (evento.key === 'Escape') {
                     fecharModalSair();
+                    fecharMenu();
                 }
             });
         }
