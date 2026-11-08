@@ -6,6 +6,7 @@
     <title>Inventário | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
 </head>
 <body class="min-h-screen bg-blue-50 text-slate-800">
     <div class="flex min-h-screen">
@@ -20,19 +21,27 @@
                 {% endfor %}
             {% endwith %}
 
+            <div id="avisoInventario" class="mb-4 hidden rounded-xl border p-4 text-sm"></div>
+
             <header class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
                 <div>
                     <p class="mb-2 font-semibold text-blue-600">ORGANIZE SUA COZINHA</p>
                     <h1 class="text-3xl font-bold">Meu inventário</h1>
                     <p class="mt-3 max-w-xl text-slate-500">
-                        Confira os ingredientes disponíveis e aproveite melhor os alimentos que você tem.
+                        Confira os ingredientes disponíveis, edite qualquer item ou remova alimentos que já utilizou.
                     </p>
                 </div>
 
-                <a href="{{ url_for('cadastrar_ingrediente') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition hover:bg-blue-700">
-                    <i class="fa-solid fa-plus"></i>
-                    Adicionar ingrediente
-                </a>
+                <div class="flex flex-wrap gap-3">
+                    <a href="{{ url_for('receitas') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow-md transition hover:bg-emerald-700">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        Gerar receita com meu estoque
+                    </a>
+                    <a href="{{ url_for('cadastrar_ingrediente') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition hover:bg-blue-700">
+                        <i class="fa-solid fa-plus"></i>
+                        Adicionar ingrediente
+                    </a>
+                </div>
             </header>
 
             <section class="mb-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -115,14 +124,13 @@
                                 Editar
                             </button>
 
-                            <form action="{{ url_for('excluir_ingrediente', item_id=item['id']) }}"
-                                  method="POST"
-                                  onsubmit="return confirm('Deseja realmente remover este ingrediente?')">
-                                <button type="submit" class="text-sm font-semibold text-red-500 transition hover:text-red-700">
-                                    <i class="fa-regular fa-trash-can mr-1"></i>
-                                    Remover ingrediente
-                                </button>
-                            </form>
+                            <button type="button"
+                                    class="btn-remover text-sm font-semibold text-red-500 transition hover:text-red-700"
+                                    data-id="{{ item['id'] }}"
+                                    data-nome="{{ item['nome'] }}">
+                                <i class="fa-regular fa-trash-can mr-1"></i>
+                                Remover ingrediente
+                            </button>
                         </div>
                     </article>
                     {% endfor %}
@@ -145,6 +153,10 @@
         </main>
     </div>
 
+    <!-- Datalist de sugestões para edição (Issue #45) -->
+    <datalist id="sugestoesEdicao"></datalist>
+
+    <!-- MODAL DE EDIÇÃO DE ITEM (ISSUES #37 e #40) -->
     <div id="modalEditar" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
         <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
             <div class="mb-4 flex items-center justify-between">
@@ -160,7 +172,7 @@
                 <input type="hidden" id="editId">
                 <div>
                     <label class="mb-1 block text-sm font-semibold">Nome</label>
-                    <input type="text" id="editNome" required maxlength="100" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                    <input type="text" id="editNome" list="sugestoesEdicao" required maxlength="100" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-semibold">Categoria</label>
@@ -185,7 +197,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-semibold">Validade (opcional)</label>
+                    <label class="mb-1 block text-sm font-semibold">Validade</label>
                     <input type="date" id="editValidade" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
                 </div>
                 <div class="flex gap-3 pt-2">
@@ -203,14 +215,20 @@
     <script>
         const busca = document.getElementById('busca');
         const filtroCategoria = document.getElementById('filtroCategoria');
-        const cartoes = [...document.querySelectorAll('.cartao-ingrediente')];
         const mensagemVazia = document.getElementById('mensagemVazia');
         const totalVencimento = document.getElementById('totalVencimento');
         const totalCategorias = document.getElementById('totalCategorias');
+        const avisoInventario = document.getElementById('avisoInventario');
 
         const modalEditar = document.getElementById('modalEditar');
         const formEditar = document.getElementById('formEditar');
         const erroModalEditar = document.getElementById('erroModalEditar');
+        const editNome = document.getElementById('editNome');
+        const datalistEdicao = document.getElementById('sugestoesEdicao');
+
+        function obterCartoes() {
+            return [...document.querySelectorAll('.cartao-ingrediente')];
+        }
 
         function atualizarInventario() {
             const termo = busca.value.toLowerCase().trim();
@@ -221,7 +239,7 @@
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
-            cartoes.forEach(cartao => {
+            obterCartoes().forEach(cartao => {
                 const nome = cartao.dataset.nome;
                 const categoriaItem = cartao.dataset.categoria;
                 const validade = cartao.dataset.validade;
@@ -249,6 +267,20 @@
             mensagemVazia.classList.toggle('hidden', visiveis > 0);
         }
 
+        editNome.addEventListener('input', async () => {
+            try {
+                const resp = await fetch(`/api/ingredientes/sugestoes?q=${encodeURIComponent(editNome.value.trim())}`);
+                if (!resp.ok) return;
+                const dados = await resp.json();
+                datalistEdicao.replaceChildren();
+                (dados.sugestoes || []).forEach(nome => {
+                    const opt = document.createElement('option');
+                    opt.value = nome;
+                    datalistEdicao.appendChild(opt);
+                });
+            } catch { /* silencioso */ }
+        });
+
         document.querySelectorAll('.btn-editar').forEach(btn => {
             btn.addEventListener('click', () => {
                 erroModalEditar.classList.add('hidden');
@@ -260,6 +292,32 @@
                 document.getElementById('editValidade').value = btn.dataset.validade;
                 modalEditar.classList.remove('hidden');
                 modalEditar.classList.add('flex');
+            });
+        });
+
+        document.querySelectorAll('.btn-remover').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const itemId = btn.dataset.id;
+                const itemNome = btn.dataset.nome;
+                if (!confirm(`Deseja realmente remover "${itemNome}" do seu inventário?`)) return;
+
+                try {
+                    const resp = await fetch(`/api/ingredientes/${itemId}`, { method: 'DELETE' });
+                    const dados = await resp.json();
+                    if (!resp.ok) throw new Error(dados.erro || 'Erro ao remover ingrediente.');
+
+                    const cartao = btn.closest('.cartao-ingrediente');
+                    if (cartao) cartao.remove();
+                    atualizarInventario();
+
+                    avisoInventario.className = 'mb-4 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800';
+                    avisoInventario.textContent = dados.mensagem || 'Ingrediente removido com sucesso!';
+                    avisoInventario.classList.remove('hidden');
+                } catch (err) {
+                    avisoInventario.className = 'mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
+                    avisoInventario.textContent = err.message;
+                    avisoInventario.classList.remove('hidden');
+                }
             });
         });
 

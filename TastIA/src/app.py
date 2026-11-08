@@ -482,34 +482,50 @@ def cadastrar_ingrediente():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        from rotas.ingrediente import _formatar_qtd_unidade, _buscar_duplicado
+        from rotas.ingrediente import (
+            _buscar_duplicado,
+            _formatar_qtd_unidade,
+            _somar_quantidades,
+            _validade_mais_proxima,
+        )
         nome = (request.form.get('nome') or '').strip()
         categoria = (request.form.get('categoria') or 'Outros').strip()
         quantidade = (request.form.get('quantidade') or '').strip()
         unidade = (request.form.get('unidade') or '').strip()
-        validade = request.form.get('validade') or None
+        validade = (request.form.get('validade') or '').strip() or None
 
         if not nome or not quantidade:
             flash('Informe o nome e a quantidade do ingrediente.', 'erro')
             return redirect(url_for('cadastrar_ingrediente'))
 
-        conn = obter_conexao()
-        duplicado = _buscar_duplicado(conn, session['usuario_id'], nome)
-        if duplicado:
-            conn.close()
-            flash(f"O ingrediente '{duplicado['nome']}' já está cadastrado no seu inventário.", 'erro')
-            return redirect(url_for('cadastrar_ingrediente'))
-
         qtd_final, unid_final = _formatar_qtd_unidade(quantidade, unidade)
+        usuario_id = session['usuario_id']
+
+        conn = obter_conexao()
         cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO inventario (usuario_id, nome, categoria, quantidade, unidade, validade) VALUES (?, ?, ?, ?, ?, ?)',
-            (session['usuario_id'], nome, categoria, qtd_final, unid_final, validade)
-        )
+        duplicado = _buscar_duplicado(conn, usuario_id, nome)
+
+        if duplicado:
+            nova_qtd, nova_unid = _somar_quantidades(
+                duplicado['quantidade'], duplicado.get('unidade') or '', qtd_final, unid_final
+            )
+            menor_val = _validade_mais_proxima(duplicado['validade'], validade)
+            cursor.execute(
+                '''UPDATE inventario
+                   SET categoria = ?, quantidade = ?, unidade = ?, validade = ?, atualizado_em = CURRENT_TIMESTAMP
+                   WHERE id = ? AND usuario_id = ?''',
+                (categoria, nova_qtd, nova_unid, menor_val, duplicado['id'], usuario_id)
+            )
+            flash('Ingrediente já existia: quantidade somada e validade mais próxima mantida!', 'sucesso')
+        else:
+            cursor.execute(
+                'INSERT INTO inventario (usuario_id, nome, categoria, quantidade, unidade, validade) VALUES (?, ?, ?, ?, ?, ?)',
+                (usuario_id, nome, categoria, qtd_final, unid_final, validade)
+            )
+            flash('Ingrediente cadastrado com sucesso!', 'sucesso')
+
         conn.commit()
         conn.close()
-
-        flash('Ingrediente cadastrado com sucesso!', 'sucesso')
         return redirect(url_for('inventario'))
 
     return render_template('cadastrar_ingrediente.html')

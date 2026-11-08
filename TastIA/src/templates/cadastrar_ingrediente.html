@@ -46,6 +46,10 @@
                     {% endfor %}
                 {% endwith %}
 
+                <!-- Lista oficial de sugestões (Issue #45) compartilhada entre foto e cadastro manual -->
+                <datalist id="sugestoesOficiais"></datalist>
+
+                <!-- SEÇÃO 1: IDENTIFICAR POR FOTO (IA) -->
                 <section class="mb-8 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-8">
 
                     <div class="mb-6 flex items-center gap-3">
@@ -59,7 +63,7 @@
                             </h2>
 
                             <p class="text-sm text-slate-500">
-                                Envie uma imagem otimizada para a inteligência artificial identificar os ingredientes. A data de validade é obrigatória.
+                                Envie uma imagem para a inteligência artificial identificar os ingredientes. A data de validade é obrigatória para salvar.
                             </p>
                         </div>
                     </div>
@@ -111,7 +115,7 @@
                             </h3>
 
                             <p class="mt-1 text-sm text-slate-500">
-                                Confira os resultados, preencha obrigatoriamente a data de validade e selecione o que deseja salvar.
+                                Confira os resultados, informe obrigatoriamente a data de validade de cada item e selecione o que deseja salvar. Itens já cadastrados terão a quantidade somada mantendo a validade mais próxima.
                             </p>
                         </div>
 
@@ -156,6 +160,7 @@
                     </div>
                 </section>
 
+                <!-- SEÇÃO 2: CADASTRO MANUAL DIGITANDO (ISSUES #39 E #45) -->
                 <section class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-8">
 
                     <div class="mb-6 flex items-center gap-3">
@@ -169,7 +174,7 @@
                             </h2>
 
                             <p class="text-sm text-slate-500">
-                                Informe os dados do ingrediente.
+                                Informe os dados do ingrediente. Se ele já existir no seu inventário, a quantidade será somada mantendo a validade mais próxima.
                             </p>
                         </div>
                     </div>
@@ -190,9 +195,11 @@
                                 type="text"
                                 id="nome"
                                 name="nome"
+                                list="sugestoesOficiais"
+                                autocomplete="off"
                                 maxlength="100"
                                 required
-                                placeholder="Ex.: Tomate"
+                                placeholder="Comece a digitar para ver sugestões (ex.: Tomate, Arroz, Leite...)"
                                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                             >
                         </div>
@@ -311,6 +318,11 @@
             const areaConfirmacao = document.getElementById('areaConfirmacao');
             const listaDetectados = document.getElementById('listaDetectados');
 
+            const inputNomeManual = document.getElementById('nome');
+            const selectCatManual = document.getElementById('categoria');
+            const datalistSugestoes = document.getElementById('sugestoesOficiais');
+            const mapaCatSugestoes = {};
+
             const categorias = [
                 'Frutas',
                 'Verduras e legumes',
@@ -323,6 +335,35 @@
 
             let urlImagem = null;
             let todosSelecionados = true;
+
+            // Busca até 8 sugestões da lista oficial (Issue #45)
+            async function atualizarSugestoes(termo = '') {
+                try {
+                    const resp = await fetch(`/api/ingredientes/sugestoes?q=${encodeURIComponent(termo)}`);
+                    if (!resp.ok) return;
+                    const dados = await resp.json();
+                    datalistSugestoes.replaceChildren();
+                    (dados.itens || []).forEach(item => {
+                        mapaCatSugestoes[item.nome.toLowerCase()] = item.categoria;
+                        const opt = document.createElement('option');
+                        opt.value = item.nome;
+                        datalistSugestoes.appendChild(opt);
+                    });
+                } catch {
+                    // Falha silenciosa no autocomplete
+                }
+            }
+
+            inputNomeManual.addEventListener('input', () => {
+                const valor = inputNomeManual.value.trim();
+                atualizarSugestoes(valor);
+                const catSugerida = mapaCatSugestoes[valor.toLowerCase()];
+                if (catSugerida && !selectCatManual.value) {
+                    selectCatManual.value = catSugerida;
+                }
+            });
+
+            atualizarSugestoes('');
 
             function mostrarMensagem(texto, tipo = 'erro') {
                 const estilos = {
@@ -350,6 +391,7 @@
                 const nome = document.createElement('input');
                 nome.type = 'text';
                 nome.maxLength = 100;
+                nome.setAttribute('list', 'sugestoesOficiais');
                 nome.placeholder = 'Nome do ingrediente';
                 nome.value = String(item.nome || '');
                 nome.className = 'ing-nome w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
@@ -368,6 +410,13 @@
                     ? item.categoria
                     : 'Outros';
 
+                nome.addEventListener('input', () => {
+                    const v = nome.value.trim();
+                    atualizarSugestoes(v);
+                    const cSug = mapaCatSugestoes[v.toLowerCase()];
+                    if (cSug) categoria.value = cSug;
+                });
+
                 const quantidade = document.createElement('input');
                 quantidade.type = 'text';
                 quantidade.maxLength = 50;
@@ -378,6 +427,7 @@
                 const validade = document.createElement('input');
                 validade.type = 'date';
                 validade.required = true;
+                validade.value = String(item.validade || '');
                 validade.className = 'ing-validade w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
                 validade.title = 'Data de validade obrigatória';
 
@@ -554,7 +604,7 @@
                         );
                     } else {
                         mostrarMensagem(
-                            `${ingredientes.length} ingrediente(s) identificado(s) em ${resposta.tempo_s}s${infoRed}! Informe a data de validade de cada item antes de salvar.`,
+                            `${ingredientes.length} ingrediente(s) identificado(s) em ${resposta.tempo_s}s${infoRed}! Informe obrigatoriamente a data de validade de cada item antes de salvar.`,
                             'sucesso'
                         );
                     }
@@ -590,7 +640,7 @@
                     if (!validade) {
                         inputVal.classList.add('border-red-500', 'ring-2', 'ring-red-200');
                         inputVal.focus();
-                        mostrarMensagem(`A data de validade é obrigatória para o ingrediente "${nome}".`);
+                        mostrarMensagem(`A data de validade é obrigatória para cadastrar o ingrediente "${nome}".`);
                         return;
                     }
                     inputVal.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
@@ -599,7 +649,7 @@
                 }
 
                 if (itens.length === 0) {
-                    mostrarMensagem('Selecione pelo menos um ingrediente e preencha o nome, quantidade e validade.');
+                    mostrarMensagem('Selecione pelo menos um ingrediente e preencha o nome, quantidade e data de validade.');
                     return;
                 }
 
