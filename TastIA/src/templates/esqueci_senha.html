@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar senha | TastIA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -62,7 +62,7 @@
             <p class="mb-2 text-sm font-bold uppercase tracking-widest text-blue-600">Recuperação de acesso</p>
             <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Esqueceu sua senha?</h1>
             <p class="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                Informe o e-mail associado à sua conta para iniciar a recuperação de senha.
+                Informe o e-mail associado à sua conta. Enviaremos um código de seis dígitos para confirmar sua identidade.
             </p>
         </div>
 
@@ -84,14 +84,21 @@
                 <label for="email" class="mb-2 block text-sm font-semibold text-slate-700">E-mail cadastrado</label>
                 <div class="campo flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 transition">
                     <i class="fa-regular fa-envelope text-slate-400"></i>
-                    <input type="email" id="email" name="email" required autocomplete="email" maxlength="254"
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        autocomplete="email"
+                        maxlength="254"
                         placeholder="voce@exemplo.com"
-                        class="w-full bg-transparent py-3.5 text-sm outline-none placeholder:text-slate-400">
+                        class="w-full bg-transparent py-3.5 text-sm outline-none placeholder:text-slate-400"
+                    >
                 </div>
             </div>
 
             <button type="submit" class="group flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 py-4 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200">
-                Solicitar recuperação
+                Enviar código de recuperação
                 <i class="fa-solid fa-arrow-right transition-transform group-hover:translate-x-1"></i>
             </button>
         </form>
@@ -100,7 +107,7 @@
             <div class="flex items-start gap-3">
                 <i class="fa-solid fa-circle-info mt-0.5 text-blue-600"></i>
                 <p class="text-xs leading-5 text-slate-600">
-                    Por segurança, a recuperação deve ser feita por um processo de validação antes de permitir a criação de uma nova senha.
+                    O código enviado por e-mail será válido por 10 minutos e poderá ser utilizado apenas uma vez.
                 </p>
             </div>
         </div>

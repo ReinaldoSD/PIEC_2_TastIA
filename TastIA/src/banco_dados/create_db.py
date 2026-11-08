@@ -1,5 +1,6 @@
 from banco_dados.database import obter_conexao
 
+
 def criar_tabelas():
     conn = obter_conexao()
     cursor = conn.cursor()
@@ -38,7 +39,6 @@ def criar_tabelas():
         )
     ''')
 
-
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bebidas_sugeridas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,8 +52,27 @@ def criar_tabelas():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS codigos_recuperacao (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            codigo_hash TEXT NOT NULL,
+            expira_em TEXT NOT NULL,
+            tentativas INTEGER NOT NULL DEFAULT 0,
+            usado INTEGER NOT NULL DEFAULT 0,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_codigos_recuperacao_usuario
+        ON codigos_recuperacao (usuario_id)
+    ''')
+
     conn.commit()
     conn.close()
+
 
 if __name__ == '__main__':
     criar_tabelas()

@@ -3,97 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastrar ingrediente | TastIA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Cadastrar ingredientes | TastIA</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
 </head>
+
 <body class="min-h-screen bg-blue-50 text-slate-800">
+
     <div class="flex min-h-screen">
         {% include 'sidebar.html' %}
 
-        <main class="ml-20 min-w-0 flex-1 px-6 py-12">
-            <div class="mx-auto max-w-3xl">
-                <div class="mb-8 text-center">
+        <main class="min-w-0 flex-1 px-4 py-8 sm:px-6 md:ml-[84px] md:px-10">
+            <div class="mx-auto max-w-4xl">
+
+                <header class="mb-8 text-center">
                     <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-3xl text-blue-600">
                         <i class="fa-solid fa-carrot"></i>
                     </div>
-                    <h1 class="text-3xl font-bold">Cadastrar ingrediente</h1>
-                    <p class="mt-3 text-slate-500">
-                        Registre os alimentos que você tem em casa e organize sua cozinha.
+
+                    <h1 class="text-2xl font-bold sm:text-3xl">
+                        Cadastrar ingredientes
+                    </h1>
+
+                    <p class="mt-3 text-sm text-slate-500 sm:text-base">
+                        Adicione os ingredientes que você possui em casa.
                     </p>
-                </div>
+                </header>
 
                 {% with mensagens = get_flashed_messages(with_categories=true) %}
                     {% for categoria, mensagem in mensagens %}
-                        <div class="mb-4 rounded-xl border p-4 {% if categoria == 'sucesso' %}border-green-200 bg-green-50 text-green-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %}">
+                        <div class="mb-4 rounded-xl border p-4
+                            {% if categoria == 'sucesso' %}
+                                border-green-200 bg-green-50 text-green-800
+                            {% else %}
+                                border-red-200 bg-red-50 text-red-800
+                            {% endif %}">
                             {{ mensagem }}
                         </div>
                     {% endfor %}
                 {% endwith %}
 
-                <section class="mb-8 rounded-2xl border border-blue-200 bg-white p-6 shadow-sm md:p-8">
-                    <div class="mb-4 flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                            <i class="fa-solid fa-camera"></i>
+                <section class="mb-8 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-8">
+
+                    <div class="mb-6 flex items-center gap-3">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                            <i class="fa-solid fa-camera text-xl"></i>
                         </div>
+
                         <div>
-                            <h2 class="text-lg font-bold">Identificar ingredientes por foto (IA)</h2>
-                            <p class="text-xs text-slate-500">Envie uma foto da geladeira ou bancada (PNG, JPG ou WEBP)</p>
+                            <h2 class="text-lg font-bold sm:text-xl">
+                                Identificar por foto
+                            </h2>
+
+                            <p class="text-sm text-slate-500">
+                                Envie uma imagem para a inteligência artificial identificar os ingredientes.
+                            </p>
                         </div>
                     </div>
 
-                    <div class="space-y-4">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <input type="file" id="inputImagem" accept="image/png,image/jpeg,image/webp"
-                                class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-blue-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100">
-                            <button type="button" id="btnDetectar"
-                                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                Detectar na foto
+                    <label for="inputImagem" class="mb-2 block text-sm font-semibold">
+                        Selecione uma imagem
+                    </label>
+
+                    <input
+                        type="file"
+                        id="inputImagem"
+                        accept="image/png,image/jpeg,image/webp"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
+                    >
+
+                    <p class="mt-2 text-xs text-slate-400">
+                        Formatos aceitos: JPG, PNG e WEBP. Tamanho máximo: 10 MB.
+                    </p>
+
+                    <div id="previewContainer" class="mt-4 hidden">
+                        <img
+                            id="imgPreview"
+                            alt="Pré-visualização da imagem selecionada"
+                            class="max-h-64 max-w-full rounded-xl border border-slate-200 object-contain"
+                        >
+                    </div>
+
+                    <button
+                        type="button"
+                        id="btnDetectar"
+                        class="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        Identificar ingredientes
+                    </button>
+
+                    <div
+                        id="msgDeteccao"
+                        role="status"
+                        aria-live="polite"
+                        class="mt-4 hidden rounded-xl border p-4 text-sm"
+                    ></div>
+
+                    <div id="areaConfirmacao" class="mt-7 hidden">
+
+                        <div class="mb-5">
+                            <h3 class="font-bold text-slate-800">
+                                Ingredientes identificados
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Confira os resultados, corrija as informações se necessário e selecione o que deseja salvar.
+                            </p>
+                        </div>
+
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <button
+                                type="button"
+                                id="btnSelecionarTodos"
+                                class="text-sm font-semibold text-blue-600 hover:underline"
+                            >
+                                Desmarcar todos
+                            </button>
+
+                            <button
+                                type="button"
+                                id="btnAdicionarLinha"
+                                class="text-sm font-semibold text-blue-600 hover:underline"
+                            >
+                                <i class="fa-solid fa-plus mr-1"></i>
+                                Adicionar manualmente
                             </button>
                         </div>
 
-                        <!-- Pré-visualização da foto -->
-                        <div id="previewContainer" class="hidden">
-                            <img id="imgPreview" src="" alt="Prévia da foto" class="max-h-56 rounded-xl border border-slate-200 object-contain">
+                        <div class="hidden grid-cols-12 gap-2 px-3 text-xs font-semibold text-slate-500 sm:grid">
+                            <div class="col-span-1">Usar</div>
+                            <div class="col-span-3">Ingrediente</div>
+                            <div class="col-span-3">Categoria</div>
+                            <div class="col-span-2">Quantidade</div>
+                            <div class="col-span-2">Validade</div>
+                            <div class="col-span-1"></div>
                         </div>
 
-                        <!-- Mensagem de status / erro 400 / aviso Plano B -->
-                        <div id="msgDeteccao" class="hidden rounded-xl border p-4 text-sm"></div>
+                        <div id="listaDetectados" class="space-y-3"></div>
 
-                        <!-- Lista editável de ingredientes detectados para confirmação do usuário -->
-                        <div id="areaConfirmacao" class="hidden space-y-4 border-t border-slate-100 pt-4">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-sm font-bold text-slate-700">
-                                    Confirme ou corrija os ingredientes encontrados:
-                                </h3>
-                                <button type="button" id="btnAdicionarLinha" class="text-xs font-semibold text-blue-600 hover:underline">
-                                    + Adicionar linha
-                                </button>
-                            </div>
-
-                            <div id="listaDetectados" class="space-y-3"></div>
-
-                            <button type="button" id="btnSalvarLote"
-                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700">
-                                <i class="fa-solid fa-check"></i>
-                                Confirmar e salvar no inventário
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            id="btnSalvarLote"
+                            class="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <i class="fa-solid fa-check"></i>
+                            Salvar ingredientes selecionados
+                        </button>
                     </div>
                 </section>
 
-                <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-                    <h2 class="mb-4 text-lg font-bold">Ou cadastre manualmente</h2>
-                    <form id="formIngrediente" method="POST" action="{{ url_for('cadastrar_ingrediente') }}" class="space-y-6">
-                        <div>
-                            <label for="nome" class="mb-2 block text-sm font-semibold">Nome do ingrediente</label>
-                            <input type="text" id="nome" name="nome" placeholder="Ex.: Arroz, tomate, leite..." required maxlength="100" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                <section class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-8">
+
+                    <div class="mb-6 flex items-center gap-3">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                            <i class="fa-solid fa-pen-to-square text-xl"></i>
                         </div>
 
                         <div>
-                            <label for="categoria" class="mb-2 block text-sm font-semibold">Categoria</label>
-                            <select id="categoria" name="categoria" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                            <h2 class="text-lg font-bold sm:text-xl">
+                                Cadastro manual
+                            </h2>
+
+                            <p class="text-sm text-slate-500">
+                                Informe os dados do ingrediente.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form
+                        id="formIngrediente"
+                        method="POST"
+                        action="{{ url_for('cadastrar_ingrediente') }}"
+                        class="space-y-5"
+                    >
+
+                        <div>
+                            <label for="nome" class="mb-2 block text-sm font-semibold">
+                                Nome do ingrediente
+                            </label>
+
+                            <input
+                                type="text"
+                                id="nome"
+                                name="nome"
+                                maxlength="100"
+                                required
+                                placeholder="Ex.: Tomate"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="categoria" class="mb-2 block text-sm font-semibold">
+                                Categoria
+                            </label>
+
+                            <select
+                                id="categoria"
+                                name="categoria"
+                                required
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            >
                                 <option value="">Selecione uma categoria</option>
                                 <option value="Frutas">Frutas</option>
                                 <option value="Verduras e legumes">Verduras e legumes</option>
@@ -106,171 +220,369 @@
                         </div>
 
                         <div>
-                            <label for="quantidade" class="mb-2 block text-sm font-semibold">Quantidade</label>
-                            <input type="text" id="quantidade" name="quantidade" placeholder="Ex.: 2 unidades, 500 g, 1 litro" required maxlength="50" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                            <label for="quantidade" class="mb-2 block text-sm font-semibold">
+                                Quantidade
+                            </label>
+
+                            <input
+                                type="text"
+                                id="quantidade"
+                                name="quantidade"
+                                maxlength="50"
+                                required
+                                placeholder="Ex.: 2 unidades, 500 g"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            >
                         </div>
 
                         <div>
                             <label for="validade" class="mb-2 block text-sm font-semibold">
-                                Data de validade <span class="font-normal text-slate-400">(opcional)</span>
+                                Validade (opcional)
                             </label>
-                            <input type="date" id="validade" name="validade" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+
+                            <input
+                                type="date"
+                                id="validade"
+                                name="validade"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            >
                         </div>
 
-                        <div class="flex flex-col gap-3 pt-2 sm:flex-row">
-                            <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700">
-                                <i class="fa-solid fa-plus"></i>
+                        <div class="flex flex-col gap-3 sm:flex-row">
+                            <button
+                                type="submit"
+                                class="flex-1 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
+                            >
+                                <i class="fa-solid fa-plus mr-2"></i>
                                 Cadastrar ingrediente
                             </button>
-                            <a href="{{ url_for('inventario') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-6 py-3 font-semibold text-slate-600 transition hover:bg-slate-50">
+
+                            <a
+                                href="{{ url_for('inventario') }}"
+                                class="rounded-xl border border-slate-200 px-6 py-3 text-center font-semibold text-slate-600 transition hover:bg-slate-50"
+                            >
                                 Cancelar
                             </a>
                         </div>
                     </form>
                 </section>
 
-                <p class="mt-6 text-center text-sm text-slate-400">
+                <footer class="py-8 text-center text-sm text-slate-400">
                     TastIA — Mais criatividade, menos desperdício.
-                </p>
+                </footer>
             </div>
         </main>
     </div>
 
     <script>
-        const inputImagem = document.getElementById('inputImagem');
-        const btnDetectar = document.getElementById('btnDetectar');
-        const previewContainer = document.getElementById('previewContainer');
-        const imgPreview = document.getElementById('imgPreview');
-        const msgDeteccao = document.getElementById('msgDeteccao');
-        const areaConfirmacao = document.getElementById('areaConfirmacao');
-        const listaDetectados = document.getElementById('listaDetectados');
-        const btnAdicionarLinha = document.getElementById('btnAdicionarLinha');
-        const btnSalvarLote = document.getElementById('btnSalvarLote');
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputImagem = document.getElementById('inputImagem');
+            const imgPreview = document.getElementById('imgPreview');
+            const previewContainer = document.getElementById('previewContainer');
 
-        const CATEGORIAS = [
-            "Frutas", "Verduras e legumes", "Laticínios",
-            "Grãos e cereais", "Carnes", "Bebidas", "Outros"
-        ];
+            const btnDetectar = document.getElementById('btnDetectar');
+            const btnSalvarLote = document.getElementById('btnSalvarLote');
+            const btnAdicionarLinha = document.getElementById('btnAdicionarLinha');
+            const btnSelecionarTodos = document.getElementById('btnSelecionarTodos');
 
-        inputImagem.addEventListener('change', () => {
-            const file = inputImagem.files[0];
-            if (file) {
-                imgPreview.src = URL.createObjectURL(file);
-                previewContainer.classList.remove('hidden');
-            } else {
-                previewContainer.classList.add('hidden');
-            }
-        });
+            const msgDeteccao = document.getElementById('msgDeteccao');
+            const areaConfirmacao = document.getElementById('areaConfirmacao');
+            const listaDetectados = document.getElementById('listaDetectados');
 
-        function criarLinhaIngrediente(item = { nome: '', categoria: 'Outros', quantidade: '1 unidade' }) {
-            const div = document.createElement('div');
-            div.className = 'linha-detectada grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-12 sm:items-center';
+            const categorias = [
+                'Frutas',
+                'Verduras e legumes',
+                'Laticínios',
+                'Grãos e cereais',
+                'Carnes',
+                'Bebidas',
+                'Outros'
+            ];
 
-            const opcoesCat = CATEGORIAS.map(c =>
-                `<option value="${c}" ${c === item.categoria ? 'selected' : ''}>${c}</option>`
-            ).join('');
+            let urlImagem = null;
+            let todosSelecionados = true;
 
-            div.innerHTML = `
-                <div class="sm:col-span-4">
-                    <input type="text" value="${item.nome}" placeholder="Nome" class="ing-nome w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div class="sm:col-span-4">
-                    <select class="ing-cat w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                        ${opcoesCat}
-                    </select>
-                </div>
-                <div class="sm:col-span-3">
-                    <input type="text" value="${item.quantidade}" placeholder="Qtd" class="ing-qtd w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                </div>
-                <div class="sm:col-span-1 flex justify-end">
-                    <button type="button" class="btn-remover text-red-500 hover:text-red-700 p-2" title="Remover">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            `;
-            div.querySelector('.btn-remover').addEventListener('click', () => div.remove());
-            listaDetectados.appendChild(div);
-        }
+            function mostrarMensagem(texto, tipo = 'erro') {
+                const estilos = {
+                    erro: 'border-red-200 bg-red-50 text-red-700',
+                    sucesso: 'border-green-200 bg-green-50 text-green-700',
+                    aviso: 'border-amber-200 bg-amber-50 text-amber-800',
+                    carregando: 'border-blue-200 bg-blue-50 text-blue-800'
+                };
 
-        btnAdicionarLinha.addEventListener('click', () => criarLinhaIngrediente());
-
-        btnDetectar.addEventListener('click', async () => {
-            const file = inputImagem.files[0];
-            if (!file) {
-                msgDeteccao.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
-                msgDeteccao.textContent = 'Selecione uma imagem antes de clicar em Detectar.';
+                msgDeteccao.className = `mt-4 rounded-xl border p-4 text-sm ${estilos[tipo]}`;
+                msgDeteccao.textContent = texto;
                 msgDeteccao.classList.remove('hidden');
-                return;
             }
 
-            const formData = new FormData();
-            formData.append('imagem', file);
+            function criarLinhaIngrediente(item = {}) {
+                const linha = document.createElement('div');
 
-            btnDetectar.disabled = true;
-            msgDeteccao.className = 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center gap-3';
-            msgDeteccao.innerHTML = '<div class="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600"></div><span>Analisando foto com Florence-2 e CLIP... Aguarde alguns segundos.</span>';
-            msgDeteccao.classList.remove('hidden');
-            areaConfirmacao.classList.add('hidden');
+                linha.className = 'linha-detectada grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-12 sm:items-center';
 
-            try {
-                const resp = await fetch('/api/ingredientes/detectar', {
-                    method: 'POST',
-                    body: formData
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'ing-selecionado h-5 w-5 accent-blue-600';
+                checkbox.checked = item.selecionado !== false;
+                checkbox.setAttribute('aria-label', 'Selecionar ingrediente');
+
+                const nome = document.createElement('input');
+                nome.type = 'text';
+                nome.maxLength = 100;
+                nome.placeholder = 'Nome do ingrediente';
+                nome.value = String(item.nome || '');
+                nome.className = 'ing-nome w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
+
+                const categoria = document.createElement('select');
+                categoria.className = 'ing-cat w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
+
+                categorias.forEach(valor => {
+                    const option = document.createElement('option');
+                    option.value = valor;
+                    option.textContent = valor;
+                    categoria.appendChild(option);
                 });
-                const dados = await resp.json();
 
-                if (!resp.ok) {
-                    throw new Error(dados.erro || 'Falha ao processar imagem.');
+                categoria.value = categorias.includes(item.categoria)
+                    ? item.categoria
+                    : 'Outros';
+
+                const quantidade = document.createElement('input');
+                quantidade.type = 'text';
+                quantidade.maxLength = 50;
+                quantidade.placeholder = 'Quantidade';
+                quantidade.value = String(item.quantidade || '1 unidade');
+                quantidade.className = 'ing-qtd w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
+
+                const validade = document.createElement('input');
+                validade.type = 'date';
+                validade.className = 'ing-validade w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
+
+                const remover = document.createElement('button');
+                remover.type = 'button';
+                remover.className = 'text-red-500 transition hover:text-red-700';
+                remover.setAttribute('aria-label', 'Remover ingrediente');
+
+                const icone = document.createElement('i');
+                icone.className = 'fa-solid fa-trash';
+                remover.appendChild(icone);
+
+                remover.addEventListener('click', () => linha.remove());
+
+                const colunaCheckbox = document.createElement('div');
+                colunaCheckbox.className = 'flex items-center gap-2 sm:col-span-1';
+                colunaCheckbox.appendChild(checkbox);
+
+                const colunaNome = document.createElement('div');
+                colunaNome.className = 'sm:col-span-3';
+                colunaNome.appendChild(nome);
+
+                const colunaCategoria = document.createElement('div');
+                colunaCategoria.className = 'sm:col-span-3';
+                colunaCategoria.appendChild(categoria);
+
+                const colunaQuantidade = document.createElement('div');
+                colunaQuantidade.className = 'sm:col-span-2';
+                colunaQuantidade.appendChild(quantidade);
+
+                const colunaValidade = document.createElement('div');
+                colunaValidade.className = 'sm:col-span-2';
+                colunaValidade.appendChild(validade);
+
+                const colunaRemover = document.createElement('div');
+                colunaRemover.className = 'flex justify-end sm:col-span-1';
+                colunaRemover.appendChild(remover);
+
+                linha.append(
+                    colunaCheckbox,
+                    colunaNome,
+                    colunaCategoria,
+                    colunaQuantidade,
+                    colunaValidade,
+                    colunaRemover
+                );
+
+                listaDetectados.appendChild(linha);
+            }
+
+            inputImagem.addEventListener('change', () => {
+                const arquivo = inputImagem.files[0];
+
+                if (urlImagem) {
+                    URL.revokeObjectURL(urlImagem);
+                    urlImagem = null;
                 }
 
-                listaDetectados.replaceChildren();
-                (dados.ingredientes || []).forEach(item => criarLinhaIngrediente(item));
-
-                if (dados.aviso) {
-                    msgDeteccao.className = 'rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800';
-                    msgDeteccao.textContent = dados.aviso;
-                } else {
-                    msgDeteccao.className = 'rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800';
-                    msgDeteccao.textContent = `${dados.total_detectado} ingrediente(s) identificado(s) em ${dados.tempo_s}s!`;
+                if (!arquivo) {
+                    previewContainer.classList.add('hidden');
+                    imgPreview.removeAttribute('src');
+                    return;
                 }
 
+                const formatos = ['image/jpeg', 'image/png', 'image/webp'];
+
+                if (!formatos.includes(arquivo.type)) {
+                    inputImagem.value = '';
+                    previewContainer.classList.add('hidden');
+                    mostrarMensagem('Formato inválido. Selecione JPG, PNG ou WEBP.');
+                    return;
+                }
+
+                if (arquivo.size > 10 * 1024 * 1024) {
+                    inputImagem.value = '';
+                    previewContainer.classList.add('hidden');
+                    mostrarMensagem('A imagem deve ter no máximo 10 MB.');
+                    return;
+                }
+
+                urlImagem = URL.createObjectURL(arquivo);
+                imgPreview.src = urlImagem;
+                previewContainer.classList.remove('hidden');
+                msgDeteccao.classList.add('hidden');
+                areaConfirmacao.classList.add('hidden');
+            });
+
+            btnAdicionarLinha.addEventListener('click', () => {
+                criarLinhaIngrediente();
                 areaConfirmacao.classList.remove('hidden');
-            } catch (err) {
-                msgDeteccao.className = 'rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
-                msgDeteccao.textContent = err.message;
-            } finally {
-                btnDetectar.disabled = false;
-            }
-        });
+            });
 
-        btnSalvarLote.addEventListener('click', async () => {
-            const linhas = [...document.querySelectorAll('.linha-detectada')];
-            const itens = linhas.map(l => ({
-                nome: l.querySelector('.ing-nome').value.trim(),
-                categoria: l.querySelector('.ing-cat').value,
-                quantidade: l.querySelector('.ing-qtd').value.trim() || '1 unidade'
-            })).filter(i => i.nome.length > 0);
+            btnSelecionarTodos.addEventListener('click', () => {
+                todosSelecionados = !todosSelecionados;
 
-            if (itens.length === 0) {
-                alert('Adicione pelo menos um ingrediente com nome válido.');
-                return;
-            }
-
-            btnSalvarLote.disabled = true;
-            try {
-                const resp = await fetch('/api/ingredientes/salvar_lote', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ itens })
+                document.querySelectorAll('.ing-selecionado').forEach(checkbox => {
+                    checkbox.checked = todosSelecionados;
                 });
-                const dados = await resp.json();
-                if (!resp.ok) throw new Error(dados.erro || 'Erro ao salvar.');
-                window.location.href = "{{ url_for('inventario') }}";
-            } catch (err) {
-                alert(err.message);
-                btnSalvarLote.disabled = false;
-            }
+
+                btnSelecionarTodos.textContent = todosSelecionados
+                    ? 'Desmarcar todos'
+                    : 'Selecionar todos';
+            });
+
+            btnDetectar.addEventListener('click', async () => {
+                const arquivo = inputImagem.files[0];
+
+                if (!arquivo) {
+                    mostrarMensagem('Selecione uma imagem antes de continuar.');
+                    return;
+                }
+
+                const dados = new FormData();
+                dados.append('imagem', arquivo);
+
+                btnDetectar.disabled = true;
+                btnDetectar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analisando imagem...';
+
+                areaConfirmacao.classList.add('hidden');
+
+                mostrarMensagem(
+                    'A inteligência artificial está analisando sua imagem. Aguarde.',
+                    'carregando'
+                );
+
+                try {
+                    const resposta = await TastIAApi.post(
+                        '/api/ingredientes/detectar',
+                        dados
+                    );
+
+                    listaDetectados.replaceChildren();
+
+                    const ingredientes = Array.isArray(resposta.ingredientes)
+                        ? resposta.ingredientes
+                        : [];
+
+                    ingredientes.forEach(item => criarLinhaIngrediente(item));
+
+                    todosSelecionados = true;
+                    btnSelecionarTodos.textContent = 'Desmarcar todos';
+
+                    if (ingredientes.length === 0) {
+                        criarLinhaIngrediente();
+
+                        mostrarMensagem(
+                            'Nenhum ingrediente foi identificado. Você pode adicioná-los manualmente nesta lista.',
+                            'aviso'
+                        );
+                    } else {
+                        mostrarMensagem(
+                            `${ingredientes.length} ingrediente(s) identificado(s). Confira os dados antes de salvar.`,
+                            'sucesso'
+                        );
+                    }
+
+                    areaConfirmacao.classList.remove('hidden');
+
+                } catch (erro) {
+                    mostrarMensagem(erro.message || 'Não foi possível identificar os ingredientes.');
+
+                } finally {
+                    btnDetectar.disabled = false;
+                    btnDetectar.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Identificar ingredientes';
+                }
+            });
+
+            btnSalvarLote.addEventListener('click', async () => {
+                const linhas = [...document.querySelectorAll('.linha-detectada')];
+
+                const selecionados = linhas.filter(linha => {
+                    return linha.querySelector('.ing-selecionado').checked;
+                });
+
+                const itens = selecionados.map(linha => ({
+                    nome: linha.querySelector('.ing-nome').value.trim(),
+                    categoria: linha.querySelector('.ing-cat').value,
+                    quantidade: linha.querySelector('.ing-qtd').value.trim(),
+                    validade: linha.querySelector('.ing-validade').value
+                }));
+
+                if (itens.length === 0 || itens.some(item => !item.nome || !item.quantidade)) {
+                    mostrarMensagem(
+                        'Selecione pelo menos um ingrediente e preencha seu nome e quantidade.'
+                    );
+                    return;
+                }
+
+                btnSalvarLote.disabled = true;
+                btnSalvarLote.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando ingredientes...';
+
+                try {
+                    const resposta = await TastIAApi.post(
+                        '/api/ingredientes/salvar_lote',
+                        { itens }
+                    );
+
+                    mostrarMensagem(
+                        resposta.mensagem || 'Ingredientes salvos com sucesso!',
+                        'sucesso'
+                    );
+
+                    window.location.href = "{{ url_for('inventario') }}";
+
+                } catch (erro) {
+                    mostrarMensagem(erro.message || 'Não foi possível salvar os ingredientes.');
+                    btnSalvarLote.disabled = false;
+                    btnSalvarLote.innerHTML = '<i class="fa-solid fa-check"></i> Salvar ingredientes selecionados';
+                }
+            });
+
+            document.getElementById('formIngrediente').addEventListener('submit', evento => {
+                const nome = document.getElementById('nome').value.trim();
+                const quantidade = document.getElementById('quantidade').value.trim();
+
+                if (!nome || !quantidade) {
+                    evento.preventDefault();
+                    alert('Preencha o nome e a quantidade do ingrediente.');
+                }
+            });
+
+            window.addEventListener('beforeunload', () => {
+                if (urlImagem) {
+                    URL.revokeObjectURL(urlImagem);
+                }
+            });
         });
     </script>
+
 </body>
 </html>

@@ -1,0 +1,27 @@
+# Configurações e credenciais
+TastIA/src/.env
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+
+# Banco de dados local
+TastIA/src/banco_dados/*.db
+TastIA/src/banco_dados/*.sqlite
+TastIA/src/banco_dados/*.sqlite3
+
+# Node
+node_modules/
+
+# Arquivos temporários
+*.log
+.DS_Store
+Thumbs.db

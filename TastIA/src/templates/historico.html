@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Histórico | TastIA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -180,6 +180,7 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
     <script>
         const URL_LISTAR = "{{ url_for('receita.historico_listar') }}";
         const URL_LOGIN = "{{ url_for('login') }}";
@@ -209,7 +210,6 @@
         let abertaId = null;
         let temporizadorAviso = null;
 
-        /* ---------- utilidades ---------- */
         function criar(tag, classes, texto) {
             const no = document.createElement(tag);
             if (classes) no.className = classes;
@@ -253,21 +253,13 @@
             return h + ' h' + (m ? ' ' + m + ' min' : '');
         }
 
-        async function chamarApi(url, opcoes) {
-            const resp = await fetch(url, opcoes);
-            let dados = null;
-            try { dados = await resp.json(); } catch (e) { /* resposta sem JSON */ }
-            if (resp.status === 401) {
-                window.location.href = URL_LOGIN;
-                throw new Error('Sua sessão expirou. Faça login novamente.');
+        async function chamarApi(url, opcoes = {}) {
+            if (opcoes.method === 'DELETE') {
+                return TastIAApi.delete(url);
             }
-            if (!resp.ok) {
-                throw new Error((dados && (dados.erro || dados.detalhes)) || ('Erro inesperado (' + resp.status + ').'));
-            }
-            return dados;
+            return TastIAApi.get(url);
         }
 
-        /* ---------- cartões ---------- */
         function criarCartao(r) {
             const visual = VISUAL[r.categoria] || VISUAL['Outros'];
 
@@ -341,7 +333,6 @@
             atualizarEstatisticas();
         }
 
-        /* ---------- carregar ---------- */
         async function carregar() {
             carregando.classList.remove('hidden');
             blocoErro.classList.add('hidden');
@@ -360,7 +351,6 @@
             }
         }
 
-        /* ---------- excluir ---------- */
         async function excluirReceita(id) {
             if (!confirm('Deseja realmente excluir esta receita do histórico?')) return;
             try {
@@ -374,7 +364,6 @@
             }
         }
 
-        /* ---------- modal ---------- */
         function abrirModal(r) {
             abertaId = r.id;
             document.getElementById('modal-titulo').textContent = r.titulo;
