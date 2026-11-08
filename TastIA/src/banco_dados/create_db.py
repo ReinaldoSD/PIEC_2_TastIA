@@ -22,6 +22,7 @@ def criar_tabelas():
             nome TEXT NOT NULL,
             categoria TEXT NOT NULL,
             quantidade TEXT NOT NULL,
+            unidade TEXT DEFAULT 'unidade',
             validade DATE,
             atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (usuario_id) REFERENCES usuarios (id)

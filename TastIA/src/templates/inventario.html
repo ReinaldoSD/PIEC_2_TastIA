@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
-
 <body class="min-h-screen bg-blue-50 text-slate-800">
     <div class="flex min-h-screen">
         {% include 'sidebar.html' %}
@@ -26,7 +25,7 @@
                     <p class="mb-2 font-semibold text-blue-600">ORGANIZE SUA COZINHA</p>
                     <h1 class="text-3xl font-bold">Meu inventário</h1>
                     <p class="mt-3 max-w-xl text-slate-500">
-                        Confira os ingredientes disponíveis e aproveite melhor os alimentos que você já tem.
+                        Confira os ingredientes disponíveis e aproveite melhor os alimentos que você tem.
                     </p>
                 </div>
 
@@ -59,7 +58,7 @@
             <section class="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
                 <div class="mb-6">
                     <h2 class="text-xl font-bold">Seus ingredientes</h2>
-                    <p class="mt-1 text-sm text-slate-500">Pesquise e filtre os itens do inventário.</p>
+                    <p class="mt-1 text-sm text-slate-500">Pesquise, filtre, edite ou remova os itens do inventário.</p>
                 </div>
 
                 <div class="mb-6 flex flex-col gap-3 md:flex-row">
@@ -80,10 +79,10 @@
                 <div id="listaIngredientes" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {% for item in itens %}
                     <article class="cartao-ingrediente rounded-2xl border border-slate-100 bg-slate-50 p-5 transition hover:border-blue-200 hover:shadow-md"
+                             data-id="{{ item['id'] }}"
                              data-nome="{{ item['nome']|lower }}"
                              data-categoria="{{ item['categoria'] }}"
                              data-validade="{{ item['validade'] or '' }}">
-
                         <div class="mb-4 flex items-start justify-between gap-2">
                             <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-600">
                                 <i class="fa-solid fa-carrot"></i>
@@ -103,15 +102,28 @@
                             Validade: {{ item['validade'] or 'Não informada' }}
                         </p>
 
-                        <form action="{{ url_for('excluir_ingrediente', item_id=item['id']) }}"
-                              method="POST"
-                              onsubmit="return confirm('Deseja realmente remover este ingrediente?')"
-                              class="mt-5 border-t border-slate-200 pt-4">
-                            <button type="submit" class="text-sm font-semibold text-red-500 transition hover:text-red-700">
-                                <i class="fa-regular fa-trash-can mr-2"></i>
-                                Remover ingrediente
+                        <div class="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
+                            <button type="button"
+                                    class="btn-editar text-sm font-semibold text-blue-600 transition hover:text-blue-800"
+                                    data-id="{{ item['id'] }}"
+                                    data-nome="{{ item['nome'] }}"
+                                    data-categoria="{{ item['categoria'] }}"
+                                    data-quantidade="{{ item['quantidade'] }}"
+                                    data-unidade="{{ item['unidade'] if 'unidade' in item.keys() and item['unidade'] else '' }}"
+                                    data-validade="{{ item['validade'] or '' }}">
+                                <i class="fa-regular fa-pen-to-square mr-1"></i>
+                                Editar
                             </button>
-                        </form>
+
+                            <form action="{{ url_for('excluir_ingrediente', item_id=item['id']) }}"
+                                  method="POST"
+                                  onsubmit="return confirm('Deseja realmente remover este ingrediente?')">
+                                <button type="submit" class="text-sm font-semibold text-red-500 transition hover:text-red-700">
+                                    <i class="fa-regular fa-trash-can mr-1"></i>
+                                    Remover ingrediente
+                                </button>
+                            </form>
+                        </div>
                     </article>
                     {% endfor %}
                 </div>
@@ -133,6 +145,61 @@
         </main>
     </div>
 
+    <div id="modalEditar" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-800">Editar ingrediente</h2>
+                <button type="button" id="fecharModalEditar" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div id="erroModalEditar" class="mb-4 hidden rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"></div>
+
+            <form id="formEditar" class="space-y-4">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="mb-1 block text-sm font-semibold">Nome</label>
+                    <input type="text" id="editNome" required maxlength="100" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-semibold">Categoria</label>
+                    <select id="editCategoria" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                        <option value="Frutas">Frutas</option>
+                        <option value="Verduras e legumes">Verduras e legumes</option>
+                        <option value="Laticínios">Laticínios</option>
+                        <option value="Grãos e cereais">Grãos e cereais</option>
+                        <option value="Carnes">Carnes</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="mb-1 block text-sm font-semibold">Quantidade</label>
+                        <input type="text" id="editQuantidade" required maxlength="50" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-semibold">Unidade</label>
+                        <input type="text" id="editUnidade" placeholder="Ex.: unidades, kg, g" maxlength="30" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-semibold">Validade (opcional)</label>
+                    <input type="date" id="editValidade" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" id="cancelarEditar" class="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnSalvarEdicao" class="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                        Salvar alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         const busca = document.getElementById('busca');
         const filtroCategoria = document.getElementById('filtroCategoria');
@@ -141,13 +208,16 @@
         const totalVencimento = document.getElementById('totalVencimento');
         const totalCategorias = document.getElementById('totalCategorias');
 
+        const modalEditar = document.getElementById('modalEditar');
+        const formEditar = document.getElementById('formEditar');
+        const erroModalEditar = document.getElementById('erroModalEditar');
+
         function atualizarInventario() {
             const termo = busca.value.toLowerCase().trim();
             const categoria = filtroCategoria.value;
             const categorias = new Set();
             let visiveis = 0;
             let proximos = 0;
-
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
@@ -163,11 +233,9 @@
                 if (mostrar) {
                     visiveis++;
                     categorias.add(categoriaItem);
-
                     if (validade) {
                         const dataValidade = new Date(validade + 'T00:00:00');
                         const dias = (dataValidade - hoje) / 86400000;
-
                         if (dias >= 0 && dias <= 7) {
                             proximos++;
                         }
@@ -180,6 +248,56 @@
             totalCategorias.textContent = categorias.size;
             mensagemVazia.classList.toggle('hidden', visiveis > 0);
         }
+
+        document.querySelectorAll('.btn-editar').forEach(btn => {
+            btn.addEventListener('click', () => {
+                erroModalEditar.classList.add('hidden');
+                document.getElementById('editId').value = btn.dataset.id;
+                document.getElementById('editNome').value = btn.dataset.nome;
+                document.getElementById('editCategoria').value = btn.dataset.categoria;
+                document.getElementById('editQuantidade').value = btn.dataset.quantidade;
+                document.getElementById('editUnidade').value = btn.dataset.unidade;
+                document.getElementById('editValidade').value = btn.dataset.validade;
+                modalEditar.classList.remove('hidden');
+                modalEditar.classList.add('flex');
+            });
+        });
+
+        function fecharModal() {
+            modalEditar.classList.add('hidden');
+            modalEditar.classList.remove('flex');
+        }
+
+        document.getElementById('fecharModalEditar').addEventListener('click', fecharModal);
+        document.getElementById('cancelarEditar').addEventListener('click', fecharModal);
+
+        formEditar.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const itemId = document.getElementById('editId').value;
+            const payload = {
+                nome: document.getElementById('editNome').value.trim(),
+                categoria: document.getElementById('editCategoria').value,
+                quantidade: document.getElementById('editQuantidade').value.trim(),
+                unidade: document.getElementById('editUnidade').value.trim(),
+                validade: document.getElementById('editValidade').value || null
+            };
+
+            try {
+                const resp = await fetch(`/api/ingredientes/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const dados = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(dados.erro || 'Erro ao editar ingrediente.');
+                }
+                window.location.reload();
+            } catch (err) {
+                erroModalEditar.textContent = err.message;
+                erroModalEditar.classList.remove('hidden');
+            }
+        });
 
         busca.addEventListener('input', atualizarInventario);
         filtroCategoria.addEventListener('change', atualizarInventario);

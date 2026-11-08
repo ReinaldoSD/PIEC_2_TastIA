@@ -29,7 +29,7 @@
                     </h1>
 
                     <p class="mt-3 text-sm text-slate-500 sm:text-base">
-                        Adicione os ingredientes que você possui em casa.
+                        Adicione os ingredientes que você possui em casa por foto com IA ou manualmente.
                     </p>
                 </header>
 
@@ -59,7 +59,7 @@
                             </h2>
 
                             <p class="text-sm text-slate-500">
-                                Envie uma imagem para a inteligência artificial identificar os ingredientes.
+                                Envie uma imagem otimizada para a inteligência artificial identificar os ingredientes. A data de validade é obrigatória.
                             </p>
                         </div>
                     </div>
@@ -111,7 +111,7 @@
                             </h3>
 
                             <p class="mt-1 text-sm text-slate-500">
-                                Confira os resultados, corrija as informações se necessário e selecione o que deseja salvar.
+                                Confira os resultados, preencha obrigatoriamente a data de validade e selecione o que deseja salvar.
                             </p>
                         </div>
 
@@ -139,7 +139,7 @@
                             <div class="col-span-3">Ingrediente</div>
                             <div class="col-span-3">Categoria</div>
                             <div class="col-span-2">Quantidade</div>
-                            <div class="col-span-2">Validade</div>
+                            <div class="col-span-2">Validade *</div>
                             <div class="col-span-1"></div>
                         </div>
 
@@ -219,31 +219,53 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="quantidade" class="mb-2 block text-sm font-semibold">
-                                Quantidade
-                            </label>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="quantidade" class="mb-2 block text-sm font-semibold">
+                                    Quantidade
+                                </label>
 
-                            <input
-                                type="text"
-                                id="quantidade"
-                                name="quantidade"
-                                maxlength="50"
-                                required
-                                placeholder="Ex.: 2 unidades, 500 g"
-                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                            >
+                                <input
+                                    type="text"
+                                    id="quantidade"
+                                    name="quantidade"
+                                    maxlength="30"
+                                    required
+                                    placeholder="Ex.: 2, 500"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                                >
+                            </div>
+                            <div>
+                                <label for="unidade" class="mb-2 block text-sm font-semibold">
+                                    Unidade
+                                </label>
+
+                                <select
+                                    id="unidade"
+                                    name="unidade"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                                >
+                                    <option value="unidades">Unidade(s)</option>
+                                    <option value="g">Gramas (g)</option>
+                                    <option value="kg">Quilos (kg)</option>
+                                    <option value="ml">Mililitros (ml)</option>
+                                    <option value="litro">Litro(s)</option>
+                                    <option value="pacote">Pacote(s)</option>
+                                    <option value="caixa">Caixa(s)</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div>
                             <label for="validade" class="mb-2 block text-sm font-semibold">
-                                Validade (opcional)
+                                Validade <span class="text-red-500">*</span>
                             </label>
 
                             <input
                                 type="date"
                                 id="validade"
                                 name="validade"
+                                required
                                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                             >
                         </div>
@@ -317,7 +339,6 @@
 
             function criarLinhaIngrediente(item = {}) {
                 const linha = document.createElement('div');
-
                 linha.className = 'linha-detectada grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-12 sm:items-center';
 
                 const checkbox = document.createElement('input');
@@ -356,7 +377,9 @@
 
                 const validade = document.createElement('input');
                 validade.type = 'date';
-                validade.className = 'ing-validade w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
+                validade.required = true;
+                validade.className = 'ing-validade w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
+                validade.title = 'Data de validade obrigatória';
 
                 const remover = document.createElement('button');
                 remover.type = 'button';
@@ -459,6 +482,17 @@
                     : 'Selecionar todos';
             });
 
+            async function aguardarTarefaFila(tarefaId) {
+                while (true) {
+                    await new Promise(r => setTimeout(r, 1500));
+                    const resp = await fetch(`/api/ingredientes/status/${tarefaId}`);
+                    const info = await resp.json();
+                    if (!resp.ok) throw new Error(info.erro || 'Erro ao consultar fila.');
+                    if (info.status === 'concluido') return info.resultado;
+                    if (info.status === 'erro') throw new Error(info.erro || 'Erro no processamento da imagem.');
+                }
+            }
+
             btnDetectar.addEventListener('click', async () => {
                 const arquivo = inputImagem.files[0];
 
@@ -469,6 +503,7 @@
 
                 const dados = new FormData();
                 dados.append('imagem', arquivo);
+                dados.append('assincrono', 'true');
 
                 btnDetectar.disabled = true;
                 btnDetectar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analisando imagem...';
@@ -476,15 +511,24 @@
                 areaConfirmacao.classList.add('hidden');
 
                 mostrarMensagem(
-                    'A inteligência artificial está analisando sua imagem. Aguarde.',
+                    'A inteligência artificial está reduzindo e analisando sua imagem. Aguarde.',
                     'carregando'
                 );
 
                 try {
-                    const resposta = await TastIAApi.post(
-                        '/api/ingredientes/detectar',
-                        dados
-                    );
+                    const resp = await fetch('/api/ingredientes/detectar', {
+                        method: 'POST',
+                        body: dados
+                    });
+                    let resposta = await resp.json();
+
+                    if (!resp.ok) {
+                        throw new Error(resposta.erro || 'Falha ao processar imagem.');
+                    }
+
+                    if (resp.status === 202 && resposta.tarefa_id) {
+                        resposta = await aguardarTarefaFila(resposta.tarefa_id);
+                    }
 
                     listaDetectados.replaceChildren();
 
@@ -497,6 +541,10 @@
                     todosSelecionados = true;
                     btnSelecionarTodos.textContent = 'Desmarcar todos';
 
+                    const infoRed = resposta.imagem && resposta.imagem.foi_reduzida
+                        ? ` (foto reduzida para ${resposta.imagem.largura}x${resposta.imagem.altura}px)`
+                        : '';
+
                     if (ingredientes.length === 0) {
                         criarLinhaIngrediente();
 
@@ -506,7 +554,7 @@
                         );
                     } else {
                         mostrarMensagem(
-                            `${ingredientes.length} ingrediente(s) identificado(s). Confira os dados antes de salvar.`,
+                            `${ingredientes.length} ingrediente(s) identificado(s) em ${resposta.tempo_s}s${infoRed}! Informe a data de validade de cada item antes de salvar.`,
                             'sucesso'
                         );
                     }
@@ -529,17 +577,29 @@
                     return linha.querySelector('.ing-selecionado').checked;
                 });
 
-                const itens = selecionados.map(linha => ({
-                    nome: linha.querySelector('.ing-nome').value.trim(),
-                    categoria: linha.querySelector('.ing-cat').value,
-                    quantidade: linha.querySelector('.ing-qtd').value.trim(),
-                    validade: linha.querySelector('.ing-validade').value
-                }));
+                const itens = [];
+                for (const linha of selecionados) {
+                    const nome = linha.querySelector('.ing-nome').value.trim();
+                    const categoria = linha.querySelector('.ing-cat').value;
+                    const quantidade = linha.querySelector('.ing-qtd').value.trim();
+                    const inputVal = linha.querySelector('.ing-validade');
+                    const validade = inputVal.value.trim();
 
-                if (itens.length === 0 || itens.some(item => !item.nome || !item.quantidade)) {
-                    mostrarMensagem(
-                        'Selecione pelo menos um ingrediente e preencha seu nome e quantidade.'
-                    );
+                    if (!nome || !quantidade) continue;
+
+                    if (!validade) {
+                        inputVal.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+                        inputVal.focus();
+                        mostrarMensagem(`A data de validade é obrigatória para o ingrediente "${nome}".`);
+                        return;
+                    }
+                    inputVal.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+
+                    itens.push({ marcado: true, nome, categoria, quantidade, validade });
+                }
+
+                if (itens.length === 0) {
+                    mostrarMensagem('Selecione pelo menos um ingrediente e preencha o nome, quantidade e validade.');
                     return;
                 }
 
@@ -548,7 +608,7 @@
 
                 try {
                     const resposta = await TastIAApi.post(
-                        '/api/ingredientes/salvar_lote',
+                        '/api/ingredientes/confirmar',
                         { itens }
                     );
 
@@ -569,10 +629,11 @@
             document.getElementById('formIngrediente').addEventListener('submit', evento => {
                 const nome = document.getElementById('nome').value.trim();
                 const quantidade = document.getElementById('quantidade').value.trim();
+                const validade = document.getElementById('validade').value.trim();
 
-                if (!nome || !quantidade) {
+                if (!nome || !quantidade || !validade) {
                     evento.preventDefault();
-                    alert('Preencha o nome e a quantidade do ingrediente.');
+                    alert('Preencha o nome, a quantidade e a data de validade do ingrediente.');
                 }
             });
 
