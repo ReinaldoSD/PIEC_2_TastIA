@@ -392,10 +392,23 @@
     </div>
 
     <script>
+        // Receita gerada na tela anterior (se houver). A bebida escolhida é salva com o mesmo id;
+        // sem receita, ela é salva sozinha.
+        let receitaIdOrigem = null;
+        let refeicaoOrigem = '';
+        let contextoSugestao = { receitaId: null, refeicao: '' };
+
         document.addEventListener('DOMContentLoaded', () => {
             try {
                 const refeicaoSalva = localStorage.getItem('tastia_sugestao_refeicao');
                 const ingredientesSalvos = localStorage.getItem('tastia_sugestao_ingredientes');
+                const receitaIdSalvo = localStorage.getItem('tastia_sugestao_receita_id');
+
+                if (receitaIdSalvo && /^\d+$/.test(receitaIdSalvo)) {
+                    receitaIdOrigem = Number(receitaIdSalvo);
+                    refeicaoOrigem = refeicaoSalva || '';
+                }
+                localStorage.removeItem('tastia_sugestao_receita_id');
 
                 if (refeicaoSalva) {
                     document.getElementById('refeicao').value = refeicaoSalva;
@@ -594,9 +607,11 @@
                 btnEscolher.textContent = 'A guardar...';
 
                 try {
-                    await TastIAApi.post('/api/bebida/escolher', {
+                    const salvo = await TastIAApi.post('/api/bebida/escolher', {
                         nome_bebida: String(b.nome || ''),
-                        justificativa: String(b.justificativa || '')
+                        justificativa: String(b.justificativa || ''),
+                        receita_id: contextoSugestao.receitaId,
+                        refeicao: contextoSugestao.refeicao
                     });
 
                     btnEscolher.className = 'mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition';
@@ -606,7 +621,7 @@
 
                     btnEscolher.replaceChildren(
                         iconeSalvo,
-                        document.createTextNode(' Bebida guardada!')
+                        document.createTextNode(salvo.vinculada ? ' Guardada com a receita!' : ' Bebida guardada!')
                     );
 
                 } catch (erro) {
@@ -696,6 +711,12 @@
                 mensagem.classList.remove('hidden');
                 return;
             }
+
+            // Só liga a bebida à receita se a refeição ainda for a da receita gerada
+            contextoSugestao = {
+                receitaId: (receitaIdOrigem && refeicao === refeicaoOrigem) ? receitaIdOrigem : null,
+                refeicao
+            };
 
             mensagem.className = 'flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800';
             mensagem.replaceChildren();
