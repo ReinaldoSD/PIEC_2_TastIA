@@ -221,7 +221,36 @@
 
                     <p id="textoSalva" class="mt-4 hidden text-sm"></p>
 
-                    <div class="mt-6 flex flex-wrap gap-3">
+                    <div id="blocoAprovacao" class="mt-6 flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            id="btnAprovar"
+                            class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <i class="fa-solid fa-check"></i>
+                            <span id="textoBtnAprovar">Aprovar e salvar</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            id="btnGerarOutra"
+                            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <i class="fa-solid fa-rotate"></i>
+                            Gerar outra
+                        </button>
+
+                        <button
+                            type="button"
+                            id="btnDescartar"
+                            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <i class="fa-solid fa-xmark"></i>
+                            Descartar
+                        </button>
+                    </div>
+
+                    <div id="blocoAposAprovacao" class="mt-6 hidden flex-wrap gap-3">
                         <a
                             href="{{ url_for('historico') }}"
                             class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -259,6 +288,46 @@
         const textoSalva = document.getElementById('textoSalva');
         const btnUsarInventario = document.getElementById('btnUsarInventario');
         const avisoInventarioCarregado = document.getElementById('avisoInventarioCarregado');
+        const blocoAprovacao = document.getElementById('blocoAprovacao');
+        const blocoAposAprovacao = document.getElementById('blocoAposAprovacao');
+        const btnAprovar = document.getElementById('btnAprovar');
+        const textoBtnAprovar = document.getElementById('textoBtnAprovar');
+        const btnGerarOutra = document.getElementById('btnGerarOutra');
+        const btnDescartar = document.getElementById('btnDescartar');
+
+        // Receita que está na tela, esperando o usuário aprovar ou descartar
+        let receitaAtual = null;
+
+        function guardarSugestaoParaBebida(receitaId) {
+            if (!receitaAtual) return;
+            try {
+                localStorage.setItem('tastia_sugestao_refeicao', receitaAtual.titulo);
+                localStorage.setItem('tastia_sugestao_ingredientes', receitaAtual.ingredientesBebida);
+                if (receitaId) {
+                    localStorage.setItem('tastia_sugestao_receita_id', String(receitaId));
+                } else {
+                    localStorage.removeItem('tastia_sugestao_receita_id');
+                }
+            } catch {
+                console.warn('Não foi possível guardar os dados da sugestão no navegador.');
+            }
+        }
+
+        function mostrarAprovada() {
+            blocoAprovacao.classList.add('hidden');
+            blocoAposAprovacao.classList.remove('hidden');
+            blocoAposAprovacao.classList.add('flex');
+        }
+
+        function mostrarAguardandoAprovacao() {
+            blocoAposAprovacao.classList.add('hidden');
+            blocoAposAprovacao.classList.remove('flex');
+            blocoAprovacao.classList.remove('hidden');
+            btnAprovar.classList.remove('hidden');
+            btnAprovar.disabled = false;
+            btnGerarOutra.disabled = false;
+            btnDescartar.disabled = false;
+        }
 
         if (btnUsarInventario) {
             btnUsarInventario.addEventListener('click', async () => {
@@ -280,9 +349,7 @@
             });
         }
 
-        formulario.addEventListener('submit', async function(event) {
-            event.preventDefault();
-
+        async function gerarReceita(evitar) {
             const pedido = document.getElementById('pedido').value.trim();
             const tempo = document.getElementById('tempo').value;
             const ingredientes = document.getElementById('ingredientes').value.trim();
@@ -312,30 +379,60 @@
             btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
-                const data = await TastIAApi.post('/api/receita/gerar', {
+                const dadosEnvio = {
                     pedido,
                     tempo,
                     ingredientes,
-                    restricoes
-                });
+                    restricoes,
+                    salvar: false   // só entra no histórico depois que o usuário aprovar
+                };
+                if (evitar) dadosEnvio.evitar = evitar;
+
+                const data = await TastIAApi.post('/api/receita/gerar', dadosEnvio);
 
                 if (typeof data.receita !== 'string' || !data.receita.trim()) {
                     throw new Error('O servidor não retornou uma receita válida.');
                 }
 
                 mensagem.classList.add('hidden');
-                conteudoReceita.textContent = data.receita;
+                // Em negrito: o título (primeira linha) e os cabeçalhos "Ingredientes" e "Modo de preparo".
+                // O resto segue em texto simples.
+                const linhasReceita = data.receita.split('\n');
+                const cabecalhos = ['ingredientes', 'modo de preparo'];
+                const partesReceita = [];
+                linhasReceita.forEach((linha, i) => {
+                    if (i > 0) partesReceita.push(document.createTextNode('\n'));
+                    const ehTitulo = i === 0;
+                    const ehCabecalho = cabecalhos.includes(linha.trim().toLowerCase());
+                    if (ehTitulo || ehCabecalho) {
+                        const negrito = document.createElement('strong');
+                        negrito.className = ehTitulo ? 'text-xl font-bold text-slate-900' : 'font-bold text-slate-900';
+                        negrito.textContent = linha;
+                        partesReceita.push(negrito);
+                    } else {
+                        partesReceita.push(document.createTextNode(linha));
+                    }
+                });
+                conteudoReceita.replaceChildren(...partesReceita);
 
-                const tituloGerado = pedido;
+                // A tela de bebidas recebe a receita (incluindo o id) para salvar tudo ligado
+                const detalhes = data.detalhes || {};
+                const tituloGerado = detalhes.titulo || pedido;
+                const ingredientesBebida = ingredientes ||
+                    (Array.isArray(detalhes.ingredientes) ? detalhes.ingredientes.join(', ') : '');
 
+                receitaAtual = {
+                    pedido,
+                    ingredientes,
+                    texto: data.receita,
+                    titulo: tituloGerado,
+                    ingredientesBebida
+                };
+                // Uma sugestão antiga não pode ficar ligada a esta receita nova
                 try {
-                    localStorage.setItem('tastia_sugestao_refeicao', tituloGerado);
-                    localStorage.setItem(
-                        'tastia_sugestao_ingredientes',
-                        ingredientes || data.pedido || ''
-                    );
+                    localStorage.removeItem('tastia_sugestao_receita_id');
                 } catch {
-                    console.warn('Não foi possível guardar os dados da sugestão no navegador.');
+                    console.warn('Não foi possível limpar os dados da sugestão no navegador.');
                 }
 
                 if (data.valida) {
@@ -359,11 +456,28 @@
                 textoSalva.classList.remove('hidden');
 
                 if (data.salva) {
+                    // servidor antigo que ainda salva sozinho: já está no histórico
+                    guardarSugestaoParaBebida(data.receita_id);
                     textoSalva.className = 'mt-4 text-sm text-green-700';
                     textoSalva.textContent = '✓ Esta receita foi salva no seu histórico.';
+                    mostrarAprovada();
+                } else if (data.aguardando_aprovacao) {
+                    mostrarAguardandoAprovacao();
+                    if (data.valida) {
+                        textoBtnAprovar.textContent = 'Aprovar e salvar';
+                        textoSalva.className = 'mt-4 text-sm text-slate-600';
+                        textoSalva.textContent = 'Gostou da receita? Aprove para salvá-la no histórico e escolher uma bebida.';
+                    } else {
+                        // fora do inventário: o aviso acima continua e o usuário decide
+                        textoBtnAprovar.textContent = 'Aprovar mesmo assim';
+                        textoSalva.className = 'mt-4 text-sm text-amber-700';
+                        textoSalva.textContent = 'Esta receita tem itens fora do seu inventário (veja o aviso acima). Você pode aprová-la mesmo assim para salvá-la no histórico, ou gerar outra.';
+                    }
                 } else {
+                    mostrarAguardandoAprovacao();
+                    btnAprovar.classList.add('hidden');
                     textoSalva.className = 'mt-4 text-sm text-amber-700';
-                    textoSalva.textContent = 'Esta receita não foi salva no histórico porque não passou na conferência com o seu inventário. Tente gerar outra.';
+                    textoSalva.textContent = 'Esta receita não veio no formato esperado e não pode ser aprovada. Gere outra.';
                 }
 
                 resultado.classList.remove('hidden');
@@ -398,6 +512,51 @@
                 btnSubmit.disabled = false;
                 btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
             }
+        }
+
+        formulario.addEventListener('submit', function(event) {
+            event.preventDefault();
+            gerarReceita();
+        });
+
+        btnAprovar.addEventListener('click', async () => {
+            if (!receitaAtual) return;
+            btnAprovar.disabled = true;
+            btnGerarOutra.disabled = true;
+            btnDescartar.disabled = true;
+            try {
+                const resp = await TastIAApi.post('/api/receita/aprovar', {
+                    pedido: receitaAtual.pedido,
+                    receita: receitaAtual.texto,
+                    ingredientes: receitaAtual.ingredientes
+                });
+                guardarSugestaoParaBebida(resp.receita_id);
+                if (resp.valida === false) {
+                    textoSalva.className = 'mt-4 text-sm text-amber-700';
+                    textoSalva.textContent = '✓ Receita aprovada e salva no seu histórico (com itens fora do inventário).';
+                } else {
+                    textoSalva.className = 'mt-4 text-sm text-green-700';
+                    textoSalva.textContent = '✓ Receita aprovada e salva no seu histórico.';
+                }
+                mostrarAprovada();
+            } catch (err) {
+                textoSalva.className = 'mt-4 text-sm text-red-700';
+                textoSalva.textContent = 'Não foi possível salvar: ' + err.message;
+                btnAprovar.disabled = false;
+                btnGerarOutra.disabled = false;
+                btnDescartar.disabled = false;
+            }
+        });
+
+        btnGerarOutra.addEventListener('click', () => {
+            // pede uma receita diferente da que está na tela
+            gerarReceita(receitaAtual ? receitaAtual.titulo : '');
+        });
+
+        btnDescartar.addEventListener('click', () => {
+            receitaAtual = null;
+            resultado.classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     </script>
 </body>
