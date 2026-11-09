@@ -1,12 +1,14 @@
 """Leitura das receitas salvas no banco para a página de histórico.
 
-A tabela `receitas` guarda só (pedido, conteudo, criado_em). Título, tempo, porções,
+A tabela `receitas` guarda só (pedido, conteudo, criado_em); as bebidas escolhidas ficam em
+`bebidas_sugeridas`, ligadas à receita por `receita_id` (ou sem receita, quando salvas sozinhas). Título, tempo, porções,
 ingredientes, passos e categoria são extraídos do texto da receita na hora de listar,
 então não é preciso mudar o banco de ninguém.
 """
 import re
 from typing import Dict, List
 
+from receitas.formatador import formatar_receita
 from receitas.validador import _dividir_secoes, normalizar_texto
 
 CATEGORIAS = ["Café da manhã", "Almoço", "Jantar", "Lanche", "Sobremesa", "Outros"]
@@ -87,13 +89,31 @@ def _iso_utc(criado_em) -> str:
     return texto
 
 
-def montar_item_historico(linha) -> Dict:
-    """Converte uma linha da tabela `receitas` no JSON usado pela página de histórico."""
-    item = interpretar_receita(linha["conteudo"], linha["pedido"])
+def montar_item_bebida(linha) -> Dict:
+    """Converte uma linha de `bebidas_sugeridas` no JSON usado pela página de histórico."""
+    return {
+        "id": linha["id"],
+        "nome": linha["nome_bebida"],
+        "justificativa": linha["justificativa"],
+        "refeicao": linha["refeicao"] or "",
+        "receita_id": linha["receita_id"],
+        "criado_em": _iso_utc(linha["criado_em"]),
+    }
+
+
+def montar_item_historico(linha, bebidas=None) -> Dict:
+    """Converte uma linha da tabela `receitas` no JSON usado pela página de histórico.
+
+    bebidas: bebidas já escolhidas para esta receita (lista de dicts de `montar_item_bebida`).
+    """
+    # receitas antigas foram salvas com '##' e '**': limpa na hora de mostrar, sem mexer no banco
+    texto = formatar_receita(linha["conteudo"])
+    item = interpretar_receita(texto, linha["pedido"])
     item.update({
         "id": linha["id"],
         "pedido": linha["pedido"],
-        "texto": linha["conteudo"],
+        "texto": texto,
         "criado_em": _iso_utc(linha["criado_em"]),
+        "bebidas": list(bebidas or []),
     })
     return item
