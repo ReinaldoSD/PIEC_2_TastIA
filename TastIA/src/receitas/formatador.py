@@ -132,10 +132,55 @@ def _capitalizar(texto: str) -> str:
     return texto
 
 
+# Se o modelo copiar o modelo do prompt ("<Título da receita>") em vez de inventar o nome, não vale como título.
+_TITULOS_VAZIOS = {"titulo da receita", "nome da receita", "titulo", "nome", "receita", "titulo da receita aqui"}
+
+_UNIDADES = (
+    r"kg|g|mg|ml|l|litros?|xicaras?|xic|copos?|colheres?|colher|c\.?\s*s\.?|c\.?\s*c\.?|sopa|cha|sobremesa|"
+    r"unidades?|unid|dentes?|pitadas?|fatias?|latas?|pacotes?|caixas?|maos?|punhados?|talos?|folhas?|ramos?|"
+    r"pedacos?|cubos?|a gosto"
+)
+
+
 def _titulo_limpo(linha: str) -> str:
-    t = _sem_marcador(linha).strip(" :.\"'")
-    t = re.sub(r"^(receita|titulo)\s*:\s*", "", t, flags=re.I)
+    t = _sem_marcador(linha).strip(" :.\"'<>")
+    t = re.sub(r"^(nome da receita|receita|titulo)\s*:\s*", "", t, flags=re.I)
+    t = t.strip(" :.\"'<>")
+    if normalizar_texto(t).strip() in _TITULOS_VAZIOS:
+        return ""
     return _capitalizar(t)
+
+
+def _nome_do_ingrediente(item: str) -> str:
+    """'- 2 colheres de sopa de azeite' -> 'azeite' (tira marcador, quantidade e unidade)."""
+    s = re.sub(r"^[-*•]\s*", "", item).strip()
+    s = re.sub(r"\(.*?\)", "", s)
+    s = re.sub(r"^[\d½¼¾⅓⅔/.,\s]+", "", s)
+    s = s.split(",")[0].strip()
+    for _ in range(3):  # "colheres de sopa de azeite": tira unidade e "de" repetidos
+        novo = re.sub(rf"^(?:{_UNIDADES})\b\.?\s*(?:de |do |da |d')?", "", s, flags=re.I).strip()
+        if novo == s:
+            break
+        s = novo
+    return s.strip(" .-")
+
+
+def _titulo_pelos_ingredientes(ingredientes: List[str]) -> str:
+    """Título de reserva quando o modelo não escreve o nome: 'Receita com ovos e tomate'."""
+    nomes: List[str] = []
+    for item in ingredientes:
+        if item.endswith(":"):
+            continue
+        nome = _nome_do_ingrediente(item)
+        if nome and normalizar_texto(nome) not in {normalizar_texto(n) for n in nomes}:
+            nomes.append(nome.lower())
+        if len(nomes) == 3:
+            break
+    if not nomes:
+        return "Receita do dia"
+    if len(nomes) == 1:
+        return f"Receita com {nomes[0]}"
+    return "Receita com " + ", ".join(nomes[:-1]) + " e " + nomes[-1]
 
 
 def formatar_receita(texto: Optional[str]) -> str:
@@ -201,8 +246,10 @@ def formatar_receita(texto: Optional[str]) -> str:
         passos.pop()
     passos = [_capitalizar(p if _RE_FIM_FRASE.search(p) else p + ".") for p in passos]
 
-    if not ingredientes or not passos or not titulo:
+    if not ingredientes or not passos:
         return limpo
+    if not titulo:   # o modelo esqueceu o nome (ou copiou o "<Título da receita>" do prompt)
+        titulo = _titulo_pelos_ingredientes(ingredientes)
 
     partes = [titulo]
     if tempo:
