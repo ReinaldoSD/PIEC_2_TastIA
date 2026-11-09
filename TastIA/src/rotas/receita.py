@@ -5,7 +5,7 @@ from werkzeug.routing import BuildError
 
 from banco_dados.database import obter_conexao
 from receitas.gerador import InventarioVazioError, gerar_receita, preparar_inventario
-from receitas.historico import montar_item_historico
+from receitas.historico import interpretar_receita, montar_item_bebida, montar_item_historico
 from receitas.validador import normalizar_texto
 from servicos.fila import obter_fila, ESTADO_CONCLUIDO, ESTADO_ERRO, ESTADO_PENDENTE, ESTADO_PROCESSANDO
 
@@ -54,6 +54,34 @@ def _separar_nomes(texto: str):
             vistos.add(chave)
             nomes.append(nome)
     return nomes[:60]
+
+
+def _salvar_receita(usuario_id: int, pedido: str, texto: str):
+    """Grava a receita no histórico e devolve o id (ou None se falhar)."""
+    try:
+        conn = obter_conexao()
+        try:
+            cur = conn.execute(
+                "INSERT INTO receitas (usuario_id, pedido, conteudo) VALUES (?, ?, ?)",
+                (usuario_id, pedido, texto),
+            )
+            conn.commit()
+            return cur.lastrowid
+        finally:
+            conn.close()
+    except Exception:
+        current_app.logger.exception("Falha ao salvar a receita no histórico")
+        return None
+
+
+def _montar_resposta(r, pedido: str, receita_id):
+    """JSON devolvido ao navegador: receita limpa + partes já separadas + id para ligar bebidas."""
+    resposta = r.como_dict()
+    resposta["receita"] = resposta.pop("texto")
+    resposta["detalhes"] = interpretar_receita(resposta["receita"], pedido)
+    resposta["receita_id"] = receita_id
+    resposta["salva"] = receita_id is not None
+    return resposta
 
 
 # --------------------------------------------------------------------------- #
@@ -112,27 +140,8 @@ def gerar():
 
         def _tarefa_geracao():
             r = gerar_receita(itens, pedido, tempo, dificuldade, restricoes, evitar)
-            receita_id = None
-            if r.valida:
-                try:
-                    conn = obter_conexao()
-                    try:
-                        cur = conn.execute(
-                            "INSERT INTO receitas (usuario_id, pedido, conteudo) VALUES (?, ?, ?)",
-                            (usuario_id, pedido, r.texto),
-                        )
-                        conn.commit()
-                        receita_id = cur.lastrowid
-                    finally:
-                        conn.close()
-                except Exception:
-                    current_app.logger.exception("Falha ao salvar a receita no histórico")
-
-            resposta = r.como_dict()
-            resposta["receita"] = resposta.pop("texto")
-            resposta["receita_id"] = receita_id
-            resposta["salva"] = receita_id is not None
-            return resposta
+            receita_id = _salvar_receita(usuario_id, pedido, r.texto) if r.valida else None
+            return _montar_resposta(r, pedido, receita_id)
 
         tarefa_id = fila.submeter(_tarefa_geracao)
         return jsonify({"tarefa_id": tarefa_id, "status": ESTADO_PENDENTE}), 202
@@ -152,28 +161,9 @@ def gerar():
         current_app.logger.exception("Falha ao gerar receita")
         return jsonify({"erro": "Não foi possível gerar a receita agora.", "detalhes": str(e)}), 500
 
-    # Salva no banco de dados se for válida
-    receita_id = None
-    if r.valida:
-        try:
-            conn = obter_conexao()
-            try:
-                cur = conn.execute(
-                    "INSERT INTO receitas (usuario_id, pedido, conteudo) VALUES (?, ?, ?)",
-                    (session["usuario_id"], pedido, r.texto),
-                )
-                conn.commit()
-                receita_id = cur.lastrowid
-            finally:
-                conn.close()
-        except Exception:
-            current_app.logger.exception("Falha ao salvar a receita no histórico")
-
-    resposta = r.como_dict()
-    resposta["receita"] = resposta.pop("texto")
-    resposta["receita_id"] = receita_id
-    resposta["salva"] = receita_id is not None
-    return jsonify(resposta)
+    # Salva no banco de dados se for válida; o id volta para a tela usar ao salvar a bebida
+    receita_id = _salvar_receita(session["usuario_id"], pedido, r.texto) if r.valida else None
+    return jsonify(_montar_resposta(r, pedido, receita_id))
 
 
 # --------------------------------------------------------------------------- #
@@ -202,7 +192,11 @@ def status_tarefa_receita(tarefa_id: str):
 # --------------------------------------------------------------------------- #
 @bp_receita.get("/historico")
 def historico_listar():
-    """Todas as receitas salvas do usuário logado, da mais nova para a mais antiga."""
+    """Receitas e bebidas salvas do usuário logado, da mais nova para a mais antiga.
+
+    - "receitas": cada receita traz em "bebidas" as bebidas escolhidas para ela (mesmo receita_id);
+    - "bebidas": só as bebidas salvas sozinhas (sem receita).
+    """
     if "usuario_id" not in session:
         return _nao_autenticado()
     try:
@@ -213,13 +207,29 @@ def historico_listar():
                 "WHERE usuario_id = ? ORDER BY criado_em DESC, id DESC",
                 (session["usuario_id"],),
             ).fetchall()
+            linhas_bebidas = conn.execute(
+                "SELECT id, receita_id, nome_bebida, justificativa, refeicao, criado_em "
+                "FROM bebidas_sugeridas WHERE usuario_id = ? ORDER BY criado_em DESC, id DESC",
+                (session["usuario_id"],),
+            ).fetchall()
         finally:
             conn.close()
-        itens = [montar_item_historico(l) for l in linhas]
+        bebidas = [montar_item_bebida(l) for l in linhas_bebidas]
+        por_receita = {}
+        for b in bebidas:
+            if b["receita_id"] is not None:
+                por_receita.setdefault(b["receita_id"], []).append(b)
+        itens = [montar_item_historico(l, por_receita.get(l["id"])) for l in linhas]
+        avulsas = [b for b in bebidas if b["receita_id"] is None]
     except Exception as e:
         current_app.logger.exception("Falha ao carregar o histórico")
         return jsonify({"erro": "Não foi possível carregar o histórico.", "detalhes": str(e)}), 500
-    return jsonify({"total": len(itens), "receitas": itens})
+    return jsonify({
+        "total": len(itens),
+        "total_bebidas": len(bebidas),
+        "receitas": itens,
+        "bebidas": avulsas,
+    })
 
 
 @bp_receita.delete("/historico/<int:receita_id>")
@@ -236,7 +246,8 @@ def historico_excluir(receita_id: int):
             ).fetchone()
             if not dona:
                 return jsonify({"erro": "Receita não encontrada."}), 404
-            conn.execute("DELETE FROM bebidas_sugeridas WHERE receita_id = ?", (receita_id,))
+            conn.execute("DELETE FROM bebidas_sugeridas WHERE receita_id = ? AND usuario_id = ?",
+                         (receita_id, session["usuario_id"]))
             conn.execute("DELETE FROM receitas WHERE id = ? AND usuario_id = ?",
                          (receita_id, session["usuario_id"]))
             conn.commit()
