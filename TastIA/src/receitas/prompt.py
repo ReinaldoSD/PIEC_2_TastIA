@@ -22,16 +22,21 @@ PROMPT_SISTEMA = (
     f"1. Use SOMENTE os ingredientes da lista 'Ingredientes disponíveis' e os básicos de despensa: {BASICOS_TEXTO}.\n"
     "2. NUNCA cite nenhum outro ingrediente, nem no preparo, nem como opcional, substituição "
     "ou acompanhamento. Não é necessário usar todos os ingredientes disponíveis.\n"
-    "3. Dê preferência aos ingredientes que vencem primeiro.\n"
+    "3. A lista está ordenada pela validade: os primeiros itens vencem antes. Use obrigatoriamente "
+    "os ingredientes marcados com PRIORIDADE ALTA e, depois, os marcados com 'priorize', "
+    "sempre que combinarem com o pedido.\n"
     "4. Respeite o tempo, a dificuldade e as restrições alimentares pedidos.\n"
     "5. Se houver poucos ingredientes, faça a receita mais simples possível com eles.\n"
+    "6. Escreva em texto simples: NÃO use markdown, '#', asteriscos, negrito, itálico, tabelas "
+    "nem emojis. Escreva frases completas, sem erros de português, e termine todos os passos com ponto final.\n"
+    "7. Não escreva nenhuma observação, dica ou comentário fora do formato.\n"
     "FORMATO (siga exatamente, sem texto antes do título nem depois do último passo):\n"
-    "# <Título da receita>\n"
-    "**Tempo de preparo:** <número> minutos\n"
-    "**Porções:** <número>\n"
-    "## Ingredientes\n"
+    "<Título da receita>\n"
+    "Tempo de preparo: <número> minutos\n"
+    "Porções: <número>\n"
+    "Ingredientes\n"
     "- <quantidade> <ingrediente>\n"
-    "## Modo de preparo\n"
+    "Modo de preparo\n"
     "1. <passo>\n"
     "Seja objetivo e não repita informações."
 )
@@ -40,6 +45,7 @@ PROMPT_SISTEMA = (
 PREENCHER_THINK_VAZIO = True
 
 MAX_ITENS_NO_PROMPT = 40
+LIMITE_PRIORIDADE_ALTA_DIAS = 3   # itens que vencem em até 3 dias entram como PRIORIDADE ALTA
 
 _TEMPOS = {
     "15": "até 15 minutos",
@@ -59,16 +65,22 @@ def _limpar(texto: Optional[str], limite: int) -> str:
     return texto[:limite]
 
 
-def descrever_validade(validade, hoje: Optional[date] = None) -> Optional[str]:
-    """Devolve 'vence hoje', 'vence em 3 dias'... só para itens que vencem em até 7 dias."""
+def dias_para_vencer(validade, hoje: Optional[date] = None) -> Optional[int]:
+    """Dias que faltam para vencer (0 = vence hoje, negativo = já venceu). None se sem data válida."""
     if not validade:
         return None
     hoje = hoje or date.today()
     try:
-        data = date.fromisoformat(str(validade)[:10])
+        return (date.fromisoformat(str(validade)[:10]) - hoje).days
     except ValueError:
         return None
-    dias = (data - hoje).days
+
+
+def descrever_validade(validade, hoje: Optional[date] = None) -> Optional[str]:
+    """Devolve 'vence hoje', 'vence em 3 dias'... só para itens que vencem em até 7 dias."""
+    dias = dias_para_vencer(validade, hoje)
+    if dias is None:
+        return None
     if dias < 0:
         return "vencido"
     if dias == 0:
@@ -93,7 +105,11 @@ def _linha_ingrediente(item: Dict, hoje: date) -> str:
         detalhes.append(f"quantidade: {quantidade}")
     venc = descrever_validade(item.get("validade"), hoje)
     if venc and venc != "vencido":
-        detalhes.append(f"{venc} - priorize")
+        dias = dias_para_vencer(item.get("validade"), hoje)
+        if dias is not None and dias <= LIMITE_PRIORIDADE_ALTA_DIAS:
+            detalhes.append(f"PRIORIDADE ALTA: {venc} - use na receita")
+        else:
+            detalhes.append(f"{venc} - priorize")
     return f"- {nome}" + (f" ({'; '.join(detalhes)})" if detalhes else "")
 
 
@@ -109,7 +125,7 @@ def montar_mensagem_usuario(
 ) -> str:
     hoje = hoje or date.today()
     itens = sorted(inventario, key=_chave_ordenacao)[:MAX_ITENS_NO_PROMPT]
-    linhas = ["Ingredientes disponíveis:"]
+    linhas = ["Ingredientes disponíveis (ordenados pela validade, do que vence primeiro ao que vence por último):"]
     linhas += [_linha_ingrediente(i, hoje) for i in itens]
     linhas.append(f"Pedido: {_limpar(pedido, 500)}")
     if tempo in _TEMPOS:
