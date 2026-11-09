@@ -68,11 +68,20 @@ def criar_tabelas():
             receita_id INTEGER,
             nome_bebida TEXT NOT NULL,
             justificativa TEXT NOT NULL,
+            refeicao TEXT,
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (usuario_id) REFERENCES usuarios (id),
             FOREIGN KEY (receita_id) REFERENCES receitas (id)
         )
     ''')
+
+    # Garante a coluna 'refeicao' (usada pelas bebidas salvas sem receita) em bancos já existentes
+    colunas_beb = [
+        linha["name"]
+        for linha in cursor.execute("PRAGMA table_info(bebidas_sugeridas)").fetchall()
+    ]
+    if "refeicao" not in colunas_beb:
+        cursor.execute("ALTER TABLE bebidas_sugeridas ADD COLUMN refeicao TEXT")
 
     conn.commit()
     conn.close()
