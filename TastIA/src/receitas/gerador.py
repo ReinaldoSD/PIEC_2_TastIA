@@ -1,18 +1,24 @@
-"""Geração de receitas do TastIA: prompt -> modelo -> validação -> nova tentativa se preciso[cite: 14]."""
+"""Geração de receitas do TastIA: prompt -> modelo -> limpeza do texto -> validação -> nova tentativa se preciso."""
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import date
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-from receitas.prompt import montar_prompt
-from receitas.validador import ResultadoValidacao, normalizar_texto, validar_receita
+from receitas.formatador import formatar_receita
+from receitas.prompt import dias_para_vencer, montar_prompt
+from receitas.validador import (
+    ALIMENTOS, ResultadoValidacao, _palavras, _subtokens, _tokens_inventario,
+    normalizar_texto, validar_receita,
+)
 
-MAX_TOKENS_PADRAO = 500
+MAX_TOKENS_PADRAO = 650
 MAX_TENTATIVAS_PADRAO = 2
+LIMITE_URGENTE_DIAS = 3   # itens que vencem em até 3 dias DEVEM aparecer na receita
+MAX_URGENTES = 3          # exige no máximo os 3 que vencem primeiro (evita pedir o impossível)
 
 
 class InventarioVazioError(ValueError):
-    """Não há ingredientes (válidos) para gerar a receita[cite: 14]."""
+    """Não há ingredientes (válidos) para gerar a receita."""
 
 
 @dataclass
@@ -25,6 +31,8 @@ class ReceitaGerada:
     tempo_total_s: float
     backend: str
     vencidos_ignorados: List[str] = field(default_factory=list)
+    urgentes_usados: List[str] = field(default_factory=list)       # vencem logo e entraram na receita
+    urgentes_nao_usados: List[str] = field(default_factory=list)   # vencem logo e ficaram de fora
 
     def como_dict(self) -> dict:
         return asdict(self)
@@ -51,23 +59,52 @@ def preparar_inventario(
         except ValueError:
             vencido = False
         (vencidos if vencido else ativos).append(nome if vencido else d)
+    # quem vence primeiro vem primeiro (itens sem validade válida ficam no fim)
+    ativos.sort(key=_chave_validade)
     return ativos, vencidos
 
 
-def _extrair_receita(texto: str) -> str:
-    linhas = texto.strip().splitlines()
-    for i, linha in enumerate(linhas):
-        if linha.lstrip().startswith("#"):
-            return "\n".join(linhas[i:]).strip()
-    return texto.strip()
+def _chave_validade(item: Dict) -> tuple:
+    dias = dias_para_vencer(item.get("validade"))
+    return (dias is None, dias if dias is not None else 0, str(item.get("nome", "")).lower())
 
 
-def _montar_correcao(val: ResultadoValidacao) -> str:
+def _urgentes(ativos: Sequence[Dict], hoje: Optional[date] = None) -> List[str]:
+    """Nomes dos itens que vencem em até LIMITE_URGENTE_DIAS dias, do mais próximo ao mais distante."""
+    achados = []
+    for item in ativos:
+        dias = dias_para_vencer(item.get("validade"), hoje)
+        if dias is not None and 0 <= dias <= LIMITE_URGENTE_DIAS:
+            achados.append((dias, item["nome"]))
+    achados.sort()
+    return [nome for _, nome in achados[:MAX_URGENTES]]
+
+
+def _tokens_da_receita(texto: str) -> set:
+    return {sub for p in _palavras(texto) for sub in _subtokens(p)}
+
+
+def _urgentes_nao_usados(texto: str, urgentes: Sequence[str]) -> List[str]:
+    """Quais itens urgentes a receita NÃO menciona (compara pelo alimento principal do nome)."""
+    # só conta o que aparece em 'Ingredientes' e 'Modo de preparo' (o título pode citar um item sem usá-lo)
+    inicio = texto.find("\nIngredientes")
+    usados = _tokens_da_receita(texto[inicio:] if inicio >= 0 else texto)
+    faltando = []
+    for nome in urgentes:
+        tokens = _tokens_inventario(nome)
+        chave = {t for t in tokens if t in ALIMENTOS} or tokens
+        if chave and not (chave & usados):
+            faltando.append(nome)
+    return faltando
+
+
+def _montar_correcao(val: ResultadoValidacao, urgentes_faltando: Sequence[str] = ()) -> str:
     partes = []
     if not val.estrutura_ok:
         partes.append(
             "sua versão anterior não seguiu o formato exigido; refaça com título, "
-            "'## Ingredientes' e '## Modo de preparo'."
+            "'Tempo de preparo', 'Porções', 'Ingredientes' e 'Modo de preparo', em texto simples, "
+            "sem markdown, sem '#' e sem asteriscos."
         )
     if val.problemas:
         partes.append(
@@ -75,11 +112,17 @@ def _montar_correcao(val: ResultadoValidacao) -> str:
             + ", ".join(val.problemas)
             + ". Refaça a receita completa sem usar nem mencionar esses itens."
         )
+    if urgentes_faltando:
+        partes.append(
+            "sua versão anterior não usou ingredientes que vencem em breve: "
+            + ", ".join(urgentes_faltando)
+            + ". Refaça a receita usando obrigatoriamente esses itens."
+        )
     return " ".join(partes)
 
 
-def _chave_qualidade(val: ResultadoValidacao) -> tuple:
-    return (not val.estrutura_ok, len(val.problemas))
+def _chave_qualidade(val: ResultadoValidacao, urgentes_faltando: Sequence[str] = ()) -> tuple:
+    return (not val.estrutura_ok, len(val.problemas), len(urgentes_faltando))
 
 
 def gerar_receita(
@@ -109,20 +152,22 @@ def gerar_receita(
         gerador = obter_gerador()
 
     nomes = [i["nome"] for i in ativos]
+    urgentes = _urgentes(ativos, hoje)
     inicio = time.perf_counter()
-    melhor_texto, melhor_val, correcao, feitas = "", None, None, 0
+    melhor_texto, melhor_val, melhor_falta, correcao, feitas = "", None, [], None, 0
 
     for _ in range(max(1, max_tentativas)):
         feitas += 1
         prompt = montar_prompt(ativos, pedido, tempo, dificuldade, restricoes, evitar, correcao, hoje)
         resultado = gerador.gerar_de_prompt(prompt, max_tokens)
-        texto = _extrair_receita(resultado.texto)
+        texto = formatar_receita(resultado.texto)   # sem '##', '**', observações soltas etc.
         val = validar_receita(texto, nomes)
-        if melhor_val is None or _chave_qualidade(val) < _chave_qualidade(melhor_val):
-            melhor_texto, melhor_val = texto, val
-        if val.valido:
+        falta = _urgentes_nao_usados(texto, urgentes) if val.estrutura_ok else list(urgentes)
+        if melhor_val is None or _chave_qualidade(val, falta) < _chave_qualidade(melhor_val, melhor_falta):
+            melhor_texto, melhor_val, melhor_falta = texto, val, falta
+        if val.valido and not falta:
             break
-        correcao = _montar_correcao(val)
+        correcao = _montar_correcao(val, falta)
 
     return ReceitaGerada(
         texto=melhor_texto,
@@ -133,4 +178,6 @@ def gerar_receita(
         tempo_total_s=round(time.perf_counter() - inicio, 1),
         backend=getattr(resultado, "backend", "?"),
         vencidos_ignorados=vencidos,
+        urgentes_usados=[n for n in urgentes if n not in melhor_falta],
+        urgentes_nao_usados=melhor_falta,
     )
