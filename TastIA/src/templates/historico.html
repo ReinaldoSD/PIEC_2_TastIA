@@ -73,7 +73,7 @@
             <section class="mb-6 flex flex-col gap-4 sm:flex-row">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input id="busca-receita" type="text" placeholder="Buscar pelo nome ou pelo pedido..."
+                    <input id="busca-receita" type="text" placeholder="Buscar pelo nome, pelo pedido ou pela bebida..."
                            class="w-full rounded-xl border border-blue-100 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
                 </div>
 
@@ -86,6 +86,7 @@
                     <option value="Lanche">Lanche</option>
                     <option value="Sobremesa">Sobremesa</option>
                     <option value="Outros">Outros</option>
+                    <option value="Bebidas">Bebidas</option>
                 </select>
             </section>
 
@@ -159,6 +160,11 @@
                 <ol id="modal-preparo" class="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600"></ol>
             </div>
 
+            <div id="modal-bloco-bebidas" class="mt-5 hidden rounded-2xl bg-blue-50 p-4">
+                <h3 class="mb-2 font-bold"><i class="fa-solid fa-mug-hot mr-2 text-blue-600"></i>Bebida escolhida</h3>
+                <ul id="modal-bebidas" class="list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-600"></ul>
+            </div>
+
             <pre id="modal-texto-bruto" class="hidden whitespace-pre-wrap break-words rounded-2xl bg-slate-50 p-4 text-sm text-slate-600"></pre>
 
             <div class="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -184,6 +190,7 @@
     <script>
         const URL_LISTAR = "{{ url_for('receita.historico_listar') }}";
         const URL_LOGIN = "{{ url_for('login') }}";
+        const URL_BEBIDA_EXCLUIR = "/api/bebida/historico";
 
         const busca = document.getElementById('busca-receita');
         const filtro = document.getElementById('filtro-categoria');
@@ -203,10 +210,12 @@
             'Jantar':        { icone: 'fa-moon', caixa: 'bg-indigo-100 text-indigo-600', selo: 'bg-indigo-50 text-indigo-700' },
             'Lanche':        { icone: 'fa-bread-slice', caixa: 'bg-yellow-100 text-yellow-600', selo: 'bg-yellow-50 text-yellow-700' },
             'Sobremesa':     { icone: 'fa-cake-candles', caixa: 'bg-pink-100 text-pink-600', selo: 'bg-pink-50 text-pink-700' },
-            'Outros':        { icone: 'fa-utensils', caixa: 'bg-slate-100 text-slate-500', selo: 'bg-slate-100 text-slate-600' }
+            'Outros':        { icone: 'fa-utensils', caixa: 'bg-slate-100 text-slate-500', selo: 'bg-slate-100 text-slate-600' },
+            'Bebidas':       { icone: 'fa-mug-hot', caixa: 'bg-emerald-100 text-emerald-600', selo: 'bg-emerald-50 text-emerald-700' }
         };
 
         let receitas = [];
+        let bebidas = [];   // bebidas salvas sozinhas (as ligadas a uma receita vêm dentro dela)
         let abertaId = null;
         let temporizadorAviso = null;
 
@@ -279,6 +288,13 @@
             const resumo = criar('p', 'mt-2 line-clamp-2 text-sm text-slate-500',
                 r.ingredientes.length ? r.ingredientes.slice(0, 4).join(', ') + (r.ingredientes.length > 4 ? '...' : '') : r.pedido);
 
+            const bebidaLigada = criar('p', 'mt-2 line-clamp-2 text-sm text-slate-500');
+            if (r.bebidas && r.bebidas.length) {
+                bebidaLigada.appendChild(criar('i', 'fa-solid fa-mug-hot mr-2'));
+                bebidaLigada.appendChild(document.createTextNode(
+                    (r.bebidas.length === 1 ? 'Bebida: ' : 'Bebidas: ') + r.bebidas.map(function(b) { return b.nome; }).join(', ')));
+            }
+
             const rodape = criar('div', 'mt-4 flex flex-wrap items-center justify-between gap-3');
             const tempo = criar('span', 'text-sm text-slate-500');
             if (r.tempo_min) {
@@ -302,6 +318,45 @@
 
             acoes.append(botaoExcluir, botaoVer);
             rodape.append(tempo, acoes);
+            corpo.append(topo, titulo, resumo);
+            if (bebidaLigada.childNodes.length) corpo.appendChild(bebidaLigada);
+            corpo.appendChild(rodape);
+            linha.append(caixaIcone, corpo);
+            cartao.appendChild(linha);
+            return cartao;
+        }
+
+        function criarCartaoBebida(b) {
+            const visual = VISUAL['Bebidas'];
+
+            const cartao = criar('article', 'receita-card overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md');
+            const linha = criar('div', 'flex gap-4 p-5');
+
+            const caixaIcone = criar('div', 'flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ' + visual.caixa);
+            caixaIcone.appendChild(criar('i', 'fa-solid ' + visual.icone + ' text-3xl'));
+
+            const corpo = criar('div', 'min-w-0 flex-1');
+
+            const topo = criar('div', 'mb-2 flex flex-wrap items-center gap-2');
+            topo.appendChild(criar('span', 'rounded-full px-3 py-1 text-xs font-semibold ' + visual.selo, 'Bebidas'));
+            topo.appendChild(criar('span', 'text-xs text-slate-400', formatarData(b.criado_em)));
+
+            const titulo = criar('h3', 'break-words text-lg font-bold', b.nome);
+            const resumo = criar('p', 'mt-2 line-clamp-2 text-sm text-slate-500',
+                b.justificativa || (b.refeicao ? 'Para acompanhar: ' + b.refeicao : ''));
+
+            const rodape = criar('div', 'mt-4 flex flex-wrap items-center justify-between gap-3');
+            const vazioEsq = criar('span', 'text-sm text-slate-500');
+            const acoes = criar('div', 'flex items-center gap-2');
+
+            const botaoExcluir = criar('button', 'flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-600');
+            botaoExcluir.type = 'button';
+            botaoExcluir.setAttribute('aria-label', 'Excluir bebida');
+            botaoExcluir.appendChild(criar('i', 'fa-regular fa-trash-can'));
+            botaoExcluir.addEventListener('click', function() { excluirBebida(b.id); });
+
+            acoes.appendChild(botaoExcluir);
+            rodape.append(vazioEsq, acoes);
             corpo.append(topo, titulo, resumo, rodape);
             linha.append(caixaIcone, corpo);
             cartao.appendChild(linha);
@@ -310,7 +365,10 @@
 
         function atualizarEstatisticas() {
             document.getElementById('stat-total').textContent = receitas.length;
-            document.getElementById('stat-recente').textContent = receitas.length ? formatarData(receitas[0].criado_em) : '-';
+            const datas = receitas.map(function(r) { return r.criado_em; }).concat(bebidas.map(function(b) { return b.criado_em; }))
+                .filter(function(d) { return !isNaN(new Date(d).getTime()); })
+                .sort(function(a, b) { return new Date(b) - new Date(a); });
+            document.getElementById('stat-recente').textContent = datas.length ? formatarData(datas[0]) : '-';
             document.getElementById('stat-categorias').textContent = new Set(receitas.map(function(r) { return r.categoria; })).size;
         }
 
@@ -318,18 +376,29 @@
             const termo = semAcento(busca.value.trim());
             const categoria = filtro.value;
 
-            const visiveis = receitas.filter(function(r) {
-                const correspondeTexto = !termo || semAcento(r.titulo).includes(termo) || semAcento(r.pedido).includes(termo);
+            const receitasVisiveis = categoria === 'Bebidas' ? [] : receitas.filter(function(r) {
+                const correspondeBebida = !!termo && (r.bebidas || []).some(function(b) { return semAcento(b.nome).includes(termo); });
+                const correspondeTexto = !termo || semAcento(r.titulo).includes(termo) || semAcento(r.pedido).includes(termo) || correspondeBebida;
                 const correspondeCategoria = categoria === 'todas' || r.categoria === categoria;
                 return correspondeTexto && correspondeCategoria;
             });
 
-            lista.replaceChildren(...visiveis.map(criarCartao));
-            contador.textContent = visiveis.length + ' ' + (visiveis.length === 1 ? 'receita' : 'receitas');
+            // bebidas salvas sozinhas aparecem em "Todas as categorias" e em "Bebidas"
+            const bebidasVisiveis = (categoria !== 'todas' && categoria !== 'Bebidas') ? [] : bebidas.filter(function(b) {
+                return !termo || semAcento(b.nome).includes(termo) || semAcento(b.refeicao).includes(termo) || semAcento(b.justificativa).includes(termo);
+            });
 
-            vazio.classList.toggle('hidden', receitas.length !== 0);
-            semResultados.classList.toggle('hidden', receitas.length === 0 || visiveis.length !== 0);
-            contador.classList.toggle('hidden', receitas.length === 0);
+            const itens = receitasVisiveis.map(function(r) { return { data: r.criado_em, no: criarCartao(r) }; })
+                .concat(bebidasVisiveis.map(function(b) { return { data: b.criado_em, no: criarCartaoBebida(b) }; }))
+                .sort(function(a, b) { return new Date(b.data) - new Date(a.data); });
+
+            lista.replaceChildren(...itens.map(function(i) { return i.no; }));
+            contador.textContent = itens.length + ' ' + (itens.length === 1 ? 'item' : 'itens');
+
+            const semNada = receitas.length === 0 && bebidas.length === 0;
+            vazio.classList.toggle('hidden', !semNada);
+            semResultados.classList.toggle('hidden', semNada || itens.length !== 0);
+            contador.classList.toggle('hidden', semNada);
             atualizarEstatisticas();
         }
 
@@ -342,6 +411,7 @@
             try {
                 const dados = await chamarApi(URL_LISTAR);
                 receitas = dados.receitas || [];
+                bebidas = dados.bebidas || [];
                 carregando.classList.add('hidden');
                 renderizar();
             } catch (e) {
@@ -359,6 +429,18 @@
                 if (abertaId === id) fecharModal();
                 renderizar();
                 mostrarAviso('ok', 'Receita excluída do histórico.');
+            } catch (e) {
+                mostrarAviso('erro', e.message);
+            }
+        }
+
+        async function excluirBebida(id) {
+            if (!confirm('Deseja realmente excluir esta bebida do histórico?')) return;
+            try {
+                await chamarApi(URL_BEBIDA_EXCLUIR + '/' + id, { method: 'DELETE' });
+                bebidas = bebidas.filter(function(b) { return b.id !== id; });
+                renderizar();
+                mostrarAviso('ok', 'Bebida excluída do histórico.');
             } catch (e) {
                 mostrarAviso('erro', e.message);
             }
@@ -387,6 +469,13 @@
                 ...r.ingredientes.map(function(i) { return criar('li', '', i); }));
             document.getElementById('modal-preparo').replaceChildren(
                 ...r.preparo.map(function(p) { return criar('li', '', p); }));
+
+            const blocoBebidas = document.getElementById('modal-bloco-bebidas');
+            const ligadas = r.bebidas || [];
+            blocoBebidas.classList.toggle('hidden', ligadas.length === 0);
+            document.getElementById('modal-bebidas').replaceChildren(...ligadas.map(function(b) {
+                return criar('li', '', b.justificativa ? b.nome + ' - ' + b.justificativa : b.nome);
+            }));
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
