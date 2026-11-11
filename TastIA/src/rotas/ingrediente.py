@@ -4,73 +4,16 @@ from typing import Dict, List, Optional, Tuple
 from flask import Blueprint, jsonify, request, session
 
 from banco_dados.database import obter_conexao
-from percepcao.pipeline import CATALOGO_INGREDIENTES, obter_pipeline
+from percepcao.catalogo import LISTA_OFICIAL_INGREDIENTES, SINONIMOS_NORMALIZADOS
+from percepcao.pipeline import obter_pipeline
 from receitas.validador import normalizar_texto
 from servicos.fila import obter_fila, ESTADO_CONCLUIDO, ESTADO_ERRO, ESTADO_PENDENTE
 from servicos.imagem_servico import receber_e_reduzir_imagem
 
 bp_ingrediente = Blueprint("ingrediente", __name__, url_prefix="/api/ingredientes")
 
-# Lista oficial de ingredientes para autocomplete (Issue #45)
-LISTA_OFICIAL_INGREDIENTES: List[Dict[str, str]] = sorted(
-    [
-        {"nome": nome, "categoria": info[1]}
-        for nome, info in CATALOGO_INGREDIENTES.items()
-    ]
-    + [
-        {"nome": "Abacaxi", "categoria": "Frutas"},
-        {"nome": "Abacate", "categoria": "Frutas"},
-        {"nome": "Abóbora", "categoria": "Verduras e legumes"},
-        {"nome": "Abobrinha", "categoria": "Verduras e legumes"},
-        {"nome": "Açúcar", "categoria": "Outros"},
-        {"nome": "Atum", "categoria": "Carnes"},
-        {"nome": "Aveia", "categoria": "Grãos e cereais"},
-        {"nome": "Azeite", "categoria": "Outros"},
-        {"nome": "Bacon", "categoria": "Carnes"},
-        {"nome": "Beterraba", "categoria": "Verduras e legumes"},
-        {"nome": "Café", "categoria": "Bebidas"},
-        {"nome": "Calabresa", "categoria": "Carnes"},
-        {"nome": "Camarão", "categoria": "Carnes"},
-        {"nome": "Carne moída", "categoria": "Carnes"},
-        {"nome": "Cheiro-verde", "categoria": "Verduras e legumes"},
-        {"nome": "Chocolate", "categoria": "Outros"},
-        {"nome": "Coco", "categoria": "Frutas"},
-        {"nome": "Couve", "categoria": "Verduras e legumes"},
-        {"nome": "Creme de leite", "categoria": "Laticínios"},
-        {"nome": "Cuscuz", "categoria": "Grãos e cereais"},
-        {"nome": "Ervilha", "categoria": "Grãos e cereais"},
-        {"nome": "Espinafre", "categoria": "Verduras e legumes"},
-        {"nome": "Farinha de mandioca", "categoria": "Grãos e cereais"},
-        {"nome": "Farinha de trigo", "categoria": "Grãos e cereais"},
-        {"nome": "Fubá", "categoria": "Grãos e cereais"},
-        {"nome": "Gengibre", "categoria": "Verduras e legumes"},
-        {"nome": "Leite condensado", "categoria": "Laticínios"},
-        {"nome": "Lentilha", "categoria": "Grãos e cereais"},
-        {"nome": "Limão", "categoria": "Frutas"},
-        {"nome": "Maionese", "categoria": "Outros"},
-        {"nome": "Mamão", "categoria": "Frutas"},
-        {"nome": "Mandioca", "categoria": "Verduras e legumes"},
-        {"nome": "Manga", "categoria": "Frutas"},
-        {"nome": "Manjericão", "categoria": "Verduras e legumes"},
-        {"nome": "Margarina", "categoria": "Laticínios"},
-        {"nome": "Melancia", "categoria": "Frutas"},
-        {"nome": "Milho", "categoria": "Grãos e cereais"},
-        {"nome": "Morango", "categoria": "Frutas"},
-        {"nome": "Mostarda", "categoria": "Outros"},
-        {"nome": "Peixe", "categoria": "Carnes"},
-        {"nome": "Pepino", "categoria": "Verduras e legumes"},
-        {"nome": "Presunto", "categoria": "Carnes"},
-        {"nome": "Queijo mussarela", "categoria": "Laticínios"},
-        {"nome": "Queijo parmesão", "categoria": "Laticínios"},
-        {"nome": "Repolho", "categoria": "Verduras e legumes"},
-        {"nome": "Requeijão", "categoria": "Laticínios"},
-        {"nome": "Salsicha", "categoria": "Carnes"},
-        {"nome": "Sardinha", "categoria": "Carnes"},
-        {"nome": "Tapioca", "categoria": "Grãos e cereais"},
-        {"nome": "Uva", "categoria": "Frutas"},
-    ],
-    key=lambda x: normalizar_texto(x["nome"]),
-)
+# A lista oficial de ingredientes (autocomplete, Issue #45) vem do catálogo único em
+# percepcao/catalogo.py: é a mesma que o classificador de imagens usa.
 
 
 def _nao_autenticado():
@@ -171,10 +114,11 @@ def sugestoes_ingredientes():
             nome_norm = normalizar_texto(item["nome"])
             if nome_norm in vistos:
                 continue
+            sinonimos = SINONIMOS_NORMALIZADOS.get(item["nome"], [])
             if nome_norm.startswith(chave):
                 vistos.add(nome_norm)
                 comecam.append(item)
-            elif chave in nome_norm:
+            elif chave in nome_norm or any(chave in s for s in sinonimos):
                 vistos.add(nome_norm)
                 contem.append(item)
         sugestoes = (comecam + contem)[:8]
