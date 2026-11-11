@@ -2,9 +2,13 @@ import io
 from typing import Dict, Tuple
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from percepcao.parametros import LADO_MAX_IMAGEM
+
 EXTENSOES_PERMITIDAS = {"png", "jpg", "jpeg", "webp", "bmp"}
 TAMANHO_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
-LADO_MAX_PADRAO = 1024  # Reduz fotos grandes de celular para no máximo 1024px
+# Reduz fotos grandes de celular para no máximo LADO_MAX_IMAGEM px (padrão 1600; ver percepcao/parametros.py).
+# O detector usa uma cópia menor; a resolução maior serve aos recortes do classificador.
+LADO_MAX_PADRAO = LADO_MAX_IMAGEM
 
 
 def extensao_valida(nome_arquivo: str) -> bool:
