@@ -4,9 +4,10 @@ from flask import Blueprint, current_app, jsonify, request, session, url_for
 from werkzeug.routing import BuildError
 
 from banco_dados.database import obter_conexao
+from receitas.formatador import formatar_receita
 from receitas.gerador import InventarioVazioError, gerar_receita, preparar_inventario
 from receitas.historico import interpretar_receita, montar_item_bebida, montar_item_historico
-from receitas.validador import normalizar_texto
+from receitas.validador import normalizar_texto, validar_receita
 from servicos.fila import obter_fila, ESTADO_CONCLUIDO, ESTADO_ERRO, ESTADO_PENDENTE, ESTADO_PROCESSANDO
 
 bp_receita = Blueprint("receita", __name__, url_prefix="/api/receita")
@@ -56,6 +57,15 @@ def _separar_nomes(texto: str):
     return nomes[:60]
 
 
+def _resolver_itens(usuario_id: int, texto_ing: str):
+    """Ingredientes da caixa de texto (com validade do inventário, se existir); vazio = todo o inventário."""
+    do_banco = _carregar_inventario(usuario_id)
+    if texto_ing:
+        por_nome = {normalizar_texto(i["nome"]): i for i in do_banco}
+        return [por_nome.get(normalizar_texto(n), {"nome": n}) for n in _separar_nomes(texto_ing)]
+    return do_banco
+
+
 def _salvar_receita(usuario_id: int, pedido: str, texto: str):
     """Grava a receita no histórico e devolve o id (ou None se falhar)."""
     try:
@@ -74,13 +84,16 @@ def _salvar_receita(usuario_id: int, pedido: str, texto: str):
         return None
 
 
-def _montar_resposta(r, pedido: str, receita_id):
+def _montar_resposta(r, pedido: str, receita_id, aguardando_aprovacao: bool = False):
     """JSON devolvido ao navegador: receita limpa + partes já separadas + id para ligar bebidas."""
     resposta = r.como_dict()
     resposta["receita"] = resposta.pop("texto")
     resposta["detalhes"] = interpretar_receita(resposta["receita"], pedido)
     resposta["receita_id"] = receita_id
     resposta["salva"] = receita_id is not None
+    # True quando a receita está no formato certo e só será salva se o usuário aprovar (rota /aprovar).
+    # Vale também para receita com itens fora do inventário: o aviso continua e o usuário decide.
+    resposta["aguardando_aprovacao"] = bool(aguardando_aprovacao and r.estrutura_ok and receita_id is None)
     return resposta
 
 
@@ -118,13 +131,11 @@ def gerar():
     evitar = str(dados.get("evitar", "")).strip()[:120] or None
 
     # Ingredientes: o que está na caixa de texto; se vazia, todo o inventário do usuário.
-    do_banco = _carregar_inventario(session["usuario_id"])
-    texto_ing = str(dados.get("ingredientes", "")).strip()
-    if texto_ing:
-        por_nome = {normalizar_texto(i["nome"]): i for i in do_banco}
-        itens = [por_nome.get(normalizar_texto(n), {"nome": n}) for n in _separar_nomes(texto_ing)]
-    else:
-        itens = do_banco
+    itens = _resolver_itens(session["usuario_id"], str(dados.get("ingredientes", "")).strip())
+
+    # "salvar": false = a receita só entra no histórico depois que o usuário aprovar (/aprovar).
+    # Sem esse campo, continua salvando sozinha quando a receita é válida (comportamento antigo).
+    salvar_agora = dados.get("salvar", True) is not False
 
     if not itens:
         return _erro_inventario_vazio(
@@ -140,8 +151,8 @@ def gerar():
 
         def _tarefa_geracao():
             r = gerar_receita(itens, pedido, tempo, dificuldade, restricoes, evitar)
-            receita_id = _salvar_receita(usuario_id, pedido, r.texto) if r.valida else None
-            return _montar_resposta(r, pedido, receita_id)
+            receita_id = _salvar_receita(usuario_id, pedido, r.texto) if (r.valida and salvar_agora) else None
+            return _montar_resposta(r, pedido, receita_id, aguardando_aprovacao=not salvar_agora)
 
         tarefa_id = fila.submeter(_tarefa_geracao)
         return jsonify({"tarefa_id": tarefa_id, "status": ESTADO_PENDENTE}), 202
@@ -162,8 +173,64 @@ def gerar():
         return jsonify({"erro": "Não foi possível gerar a receita agora.", "detalhes": str(e)}), 500
 
     # Salva no banco de dados se for válida; o id volta para a tela usar ao salvar a bebida
-    receita_id = _salvar_receita(session["usuario_id"], pedido, r.texto) if r.valida else None
-    return jsonify(_montar_resposta(r, pedido, receita_id))
+    receita_id = _salvar_receita(session["usuario_id"], pedido, r.texto) if (r.valida and salvar_agora) else None
+    return jsonify(_montar_resposta(r, pedido, receita_id, aguardando_aprovacao=not salvar_agora))
+
+
+# --------------------------------------------------------------------------- #
+# Aprovar receita (o usuário decide se ela entra no histórico)
+# --------------------------------------------------------------------------- #
+@bp_receita.post("/aprovar")
+def aprovar():
+    """Salva no histórico uma receita gerada com "salvar": false, depois que o usuário aprova.
+
+    Recebe {pedido, receita, ingredientes}. O servidor limpa e confere o texto de novo contra os
+    mesmos ingredientes da geração. Receita com itens fora do inventário PODE ser aprovada (o usuário
+    já viu o aviso); o que não passa é um texto fora do formato (sem 'Ingredientes' e 'Modo de preparo').
+    Aprovar duas vezes a mesma receita devolve o mesmo id, sem duplicar no histórico.
+    """
+    if "usuario_id" not in session:
+        return _nao_autenticado()
+
+    dados = request.get_json(silent=True) or {}
+    pedido = str(dados.get("pedido", "")).strip()[:500]
+    texto = formatar_receita(str(dados.get("receita", "")))
+    if not texto.strip():
+        return jsonify({"erro": "Não há receita para aprovar."}), 400
+    if len(texto) > 20000:
+        return jsonify({"erro": "A receita é grande demais para ser salva."}), 400
+
+    usuario_id = session["usuario_id"]
+    itens = _resolver_itens(usuario_id, str(dados.get("ingredientes", "")).strip())
+    ativos, _vencidos = preparar_inventario(itens)
+    if not ativos:
+        return _erro_inventario_vazio("Não há ingredientes disponíveis para conferir a receita.")
+    val = validar_receita(texto, [i["nome"] for i in ativos])
+    if not val.estrutura_ok:
+        return jsonify({"erro": "Esta receita não está no formato esperado e não pode ser salva. Gere outra."}), 422
+
+    try:
+        conn = obter_conexao()
+        try:
+            existente = conn.execute(
+                "SELECT id FROM receitas WHERE usuario_id = ? AND conteudo = ? ORDER BY id DESC LIMIT 1",
+                (usuario_id, texto),
+            ).fetchone()
+        finally:
+            conn.close()
+    except Exception:
+        current_app.logger.exception("Falha ao procurar a receita no histórico")
+        existente = None
+
+    receita_id = existente["id"] if existente else _salvar_receita(usuario_id, pedido, texto)
+    if receita_id is None:
+        return jsonify({"erro": "Não foi possível salvar a receita agora. Tente novamente."}), 500
+    return jsonify({
+        "receita_id": receita_id,
+        "salva": True,
+        "valida": val.valido,
+        "fora_do_inventario": val.problemas,
+    })
 
 
 # --------------------------------------------------------------------------- #
