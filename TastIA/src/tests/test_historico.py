@@ -165,7 +165,7 @@ def test_excluir_remove_receita_e_bebidas_ligadas():
     app, dbm, _ = _montar()
     _cliente(app, 1).post("/api/receita/gerar", json=CORPO)
     conn = dbm.obter_conexao()
-    conn.execute("INSERT INTO bebidas_sugeridas (receita_id, nome_bebida, justificativa) VALUES (1,'Suco','combina')")
+    conn.execute("INSERT INTO bebidas_sugeridas (usuario_id, receita_id, nome_bebida, justificativa) VALUES (1, 1, 'Suco', 'combina')")
     conn.commit()
     conn.close()
     r = _cliente(app, 1).delete("/api/receita/historico/1")
