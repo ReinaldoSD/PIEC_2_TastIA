@@ -1,25 +1,3 @@
-"""Limpeza e padronização do texto da receita gerada pela IA.
-
-O modelo de linguagem costuma devolver markdown ('# Título', '## Ingredientes', '**negrito**',
-'* item'), frases soltas antes do título ('Claro! Aqui está sua receita:'), observações no
-final ('Dica: ...') e, às vezes, a última frase cortada porque acabou o limite de tokens.
-
-Este módulo transforma tudo isso em um texto simples e sempre igual:
-
-    Título da receita
-    Tempo de preparo: 20 minutos
-    Porções: 2
-
-    Ingredientes
-    - 2 ovos
-    - 1 tomate
-
-    Modo de preparo
-    1. Bata os ovos.
-    2. Junte o tomate.
-
-Roda sem modelo e sem internet, então é fácil de testar.
-"""
 import re
 from typing import List, Optional
 
@@ -142,18 +120,6 @@ _UNIDADES = (
     r"pedacos?|cubos?|a gosto"
 )
 
-
-# =============================================================================================== #
-# FILTRO DE CONVERSA DO MODELO (saudação, vocativo, apresentação, desculpa, nota, inglês...)
-#
-# Três camadas, da mais certeira à mais ampla. Tudo é comparado SEM acento e em minúsculas,
-# exceto a lista de interjeições, que também precisa ser removida do texto original.
-#   1. Listas de início de frase (_RE_SAUDACAO, _RE_APRES_FORTE, _RE_APRES_FRACA).
-#   2. Palavras que nunca aparecem em nome de receita ("você", "sua", "vou", "aqui"...).
-#   3. Formato de frase: terminada em '!' ou '?', ou longa e terminada em ponto.
-# Para bloquear uma frase nova que escapou, basta acrescentar o início dela na lista certa.
-# =============================================================================================== #
-
 # Saudações e vocativos: "Olá!", "Bom dia, chef!", "Caro usuário,", "Pessoal,".
 _RE_SAUDACAO = re.compile(
     r"^(?:"
@@ -188,7 +154,6 @@ _RE_APRES_FORTE = re.compile(
 )
 
 # Apresentação mais genérica: vale para o TÍTULO, mas não para linhas do preparo
-# (um passo sem número pode começar com "Usando uma frigideira...").
 _RE_APRES_FRACA = re.compile(
     r"^(?:"
     r"a seguir|abaixo|logo abaixo|veja\b|confira|olha\b|vamos\b|"
@@ -210,7 +175,6 @@ _RE_APRES_FRACA = re.compile(
 )
 
 # Interjeições coladas na frente da frase: "Claro! ...", "Com certeza, ...", "Ótima escolha! ...".
-# Só valem seguidas de pontuação (ou fim da linha), para não comer o começo de "Bom bolo de cenoura".
 _RE_INTERJEICAO = re.compile(
     r"^\s*(?:"
     r"claro(?: que sim)?|certo|ok|okay|perfeito|[oó]timo|excelente|entendi|entendido|beleza|combinado|"
@@ -259,12 +223,6 @@ def _casa_listas(resto: str, fraca: bool) -> bool:
 
 
 def eh_conversa_do_modelo(linha: str, estrito: bool = True) -> bool:
-    """True se a linha é saudação, vocativo, apresentação, desculpa, nota... e NÃO conteúdo da receita.
-
-    estrito=True  : usa todas as camadas (para decidir o TÍTULO).
-    estrito=False : usa só as listas seguras (para linhas soltas de ingredientes e passos, onde um
-                    falso positivo apagaria conteúdo de verdade).
-    """
     resto = _resto_normalizado(linha)
     if not resto:   # só tinha 'Claro!' / 'Ok.'
         return True
@@ -290,11 +248,6 @@ def _conversa_solta(linha: str) -> bool:
 
 
 def _titulo_limpo(linha: str) -> str:
-    """Devolve o nome da receita ou '' se a linha não serve como título.
-
-    A linha é quebrada em frases; saudações, apresentações e frases com '!' ou '?' são descartadas e
-    sobra o nome: "Claro! Aqui está sua receita: Omelete de tomate" -> "Omelete de tomate".
-    """
     original = _sem_marcador(linha).strip()
     uteis = []
     for trecho in re.split(r"(?<=[.!?:…])\s+", original):
@@ -324,7 +277,6 @@ _RE_EMOJI = re.compile("[\U00010000-\U0010ffff\u2600-\u27bf\u2b50\ufe0f]")
 
 
 def _padronizar_titulo(t: str) -> str:
-    """Deixa o nome do prato num padrão só: sem emoji, sem 'Receita de', sem CAIXA ALTA/Title Case."""
     t = _RE_EMOJI.sub("", t)
     t = re.sub(r"\s+", " ", t).strip(" -–—,;")
     # 'Receita de bolo de cenoura' -> 'Bolo de cenoura' (só tira se sobrar algo; 'Receita com ovos' fica)
@@ -338,7 +290,6 @@ def _padronizar_titulo(t: str) -> str:
 
 
 def _nome_do_ingrediente(item: str) -> str:
-    """'- 2 colheres de sopa de azeite' -> 'azeite' (tira marcador, quantidade e unidade)."""
     s = re.sub(r"^[-*•]\s*", "", item).strip()
     s = re.sub(r"\(.*?\)", "", s)
     s = re.sub(r"^[\d½¼¾⅓⅔/.,\s]+", "", s)
@@ -388,10 +339,6 @@ def _rotulo_do_pedido(pedido: Optional[str]) -> str:
 
 
 def _titulo_pelos_ingredientes(ingredientes: List[str], pedido: Optional[str] = None) -> str:
-    """Título de reserva quando o modelo não escreve o nome.
-
-    Com pedido: 'Lanche leve com ovos e tomate'. Sem tipo de prato no pedido: 'Receita com ovos e tomate'.
-    """
     def coletar(pular_basicos: bool) -> List[str]:
         achados: List[str] = []
         for item in ingredientes:
@@ -417,14 +364,6 @@ def _titulo_pelos_ingredientes(ingredientes: List[str], pedido: Optional[str] = 
 
 
 def formatar_receita(texto: Optional[str], pedido: Optional[str] = None) -> str:
-    """Devolve a receita em texto simples e padronizado (veja o exemplo no topo do arquivo).
-
-    pedido (opcional): o que o usuário pediu; só serve para montar o título de reserva
-    ("Lanche leve com ovos e tomate") quando o modelo não escreve um nome válido.
-
-    Se não achar as seções 'Ingredientes' e 'Modo de preparo', devolve só o texto limpo,
-    para o validador acusar o formato incorreto e o gerador tentar de novo.
-    """
     limpo = limpar_markdown(texto)
     linhas = limpo.splitlines()
 

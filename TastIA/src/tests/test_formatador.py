@@ -1,7 +1,3 @@
-"""Testes do formatador de receitas: nome da receita, filtro de saudação/apresentação e limpeza.
-
-Não usam modelo nem internet. Rode com:  python -m pytest tests/test_formatador.py -v
-"""
 import pytest
 
 from receitas.formatador import eh_conversa_do_modelo, formatar_receita

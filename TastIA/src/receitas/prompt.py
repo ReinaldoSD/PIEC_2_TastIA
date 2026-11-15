@@ -1,10 +1,3 @@
-"""Montagem do prompt de receitas do TastIA (formato ChatML do SmolLM3).
-
-O prompt faz três coisas:
-  1. diz ao modelo para usar SOMENTE os ingredientes do inventário (+ básicos de despensa);
-  2. dá prioridade aos ingredientes que vencem primeiro;
-  3. exige um formato fixo, para o validador conseguir ler a receita com segurança.
-"""
 from datetime import date
 from typing import Dict, Iterable, List, Optional
 
@@ -63,7 +56,6 @@ _DIFICULDADES = {"facil": "fácil", "media": "média", "dificil": "difícil"}
 
 
 def _limpar(texto: Optional[str], limite: int) -> str:
-    """Remove tokens especiais do ChatML e quebras de linha do texto digitado pelo usuário."""
     if not texto:
         return ""
     texto = str(texto).replace("<|", "").replace("|>", "")
@@ -72,7 +64,6 @@ def _limpar(texto: Optional[str], limite: int) -> str:
 
 
 def dias_para_vencer(validade, hoje: Optional[date] = None) -> Optional[int]:
-    """Dias que faltam para vencer (0 = vence hoje, negativo = já venceu). None se sem data válida."""
     if not validade:
         return None
     hoje = hoje or date.today()
@@ -83,7 +74,6 @@ def dias_para_vencer(validade, hoje: Optional[date] = None) -> Optional[int]:
 
 
 def descrever_validade(validade, hoje: Optional[date] = None) -> Optional[str]:
-    """Devolve 'vence hoje', 'vence em 3 dias'... só para itens que vencem em até 7 dias."""
     dias = dias_para_vencer(validade, hoje)
     if dias is None:
         return None
@@ -160,10 +150,6 @@ def montar_prompt(
     correcao: Optional[str] = None,
     hoje: Optional[date] = None,
 ) -> str:
-    """Monta o prompt completo (ChatML) pronto para o modelo.
-
-    inventario: lista de dicts {"nome": str, "quantidade": str|None, "validade": "AAAA-MM-DD"|None}
-    """
     usuario = montar_mensagem_usuario(
         inventario, pedido, tempo, dificuldade, restricoes, evitar, correcao, hoje
     )
