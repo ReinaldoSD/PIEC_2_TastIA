@@ -107,7 +107,7 @@ def montar_item_historico(linha, bebidas=None) -> Dict:
     bebidas: bebidas já escolhidas para esta receita (lista de dicts de `montar_item_bebida`).
     """
     # receitas antigas foram salvas com '##' e '**': limpa na hora de mostrar, sem mexer no banco
-    texto = formatar_receita(linha["conteudo"])
+    texto = formatar_receita(linha["conteudo"], linha["pedido"])
     item = interpretar_receita(texto, linha["pedido"])
     item.update({
         "id": linha["id"],

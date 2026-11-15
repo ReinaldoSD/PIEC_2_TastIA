@@ -160,7 +160,7 @@ def gerar_receita(
         feitas += 1
         prompt = montar_prompt(ativos, pedido, tempo, dificuldade, restricoes, evitar, correcao, hoje)
         resultado = gerador.gerar_de_prompt(prompt, max_tokens)
-        texto = formatar_receita(resultado.texto)   # sem '##', '**', observações soltas etc.
+        texto = formatar_receita(resultado.texto, pedido)   # sem '##', '**', observações soltas etc.
         val = validar_receita(texto, nomes)
         falta = _urgentes_nao_usados(texto, urgentes) if val.estrutura_ok else list(urgentes)
         if melhor_val is None or _chave_qualidade(val, falta) < _chave_qualidade(melhor_val, melhor_falta):
