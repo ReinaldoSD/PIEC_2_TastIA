@@ -101,3 +101,36 @@ A identificação por fotografia é uma sugestão automática e deve ser conferi
 Atualmente, as recomendações disponibilizadas pela aplicação são de bebidas não alcoólicas. Além disso, as tarefas executadas em segundo plano são mantidas em memória; por isso, tarefas em andamento e seus resultados podem ser perdidos quando a aplicação é reiniciada.
 
 Para disponibilizar o sistema em produção, é necessário configurar uma chave secreta segura, proteger as credenciais de serviços externos e desativar o modo de depuração.
+
+
+## 4. Separação de responsabilidades no Flask
+
+As rotas de autenticação e de perfil foram separadas do ponto de entrada principal:
+
+- `rotas/autenticacao.py`: cadastro, login, logout e recuperação/redefinição de senha.
+- `rotas/perfil.py`: consulta e atualização dos dados do perfil e confirmação de identidade.
+- `servicos/autenticacao_servico.py`: funções auxiliares relacionadas à autenticação e geração do hash do código de recuperação.
+- `servicos/email_servico.py`: integração de envio do código de recuperação por e-mail.
+
+O `app.py` registra os blueprints e mantém a inicialização da aplicação, os manipuladores de erro, as páginas principais e a inicialização dos serviços. Os endereços HTTP das telas foram preservados; somente os nomes internos dos endpoints de autenticação e perfil passaram a usar os respectivos blueprints.
+
+## 5. Recursos locais e funcionamento sem CDN
+
+Os recursos visuais usados pela interface não dependem mais de servidores externos:
+
+- Font Awesome está em `static/vendor/fontawesome/`, incluindo CSS, arquivos de fonte e licença.
+- Inter está em `static/fonts/`, com pesos locais de 400 a 800.
+- `static/css/fontes-locais.css` declara as fontes locais.
+- As páginas carregam o CSS local, em vez de consultar Google Fonts ou cdnjs.
+
+A antiga referência tipográfica Sora foi alinhada à família local Inter para evitar uma chamada externa. Isso mantém a interface consistente e disponível sem internet, embora não seja uma cópia exata do desenho tipográfico Sora.
+
+## 6. Segurança e estados da interface
+
+- Os pontos de atribuição a `innerHTML` foram removidos. Conteúdos recebidos da API são apresentados por `textContent`, propriedades de formulário ou criação explícita de elementos.
+- O SVG decorativo dos cartões de bebidas é gerado a partir de um modelo fixo do próprio código; nenhum texto da API é interpretado como marcação.
+- As chamadas às rotas da API nas telas usam `static/js/api.js`, inclusive consultas, exclusões, atualizações e envio de imagens.
+- Quando a API responde com HTTP 401, o cliente redireciona para `/login`.
+- Formulários convencionais mostram estado de processamento; ações assíncronas das telas mantêm mensagens de carregamento, sucesso e erro.
+
+**Observação:** o envio real de e-mails de recuperação continua dependendo da conexão com a API externa de e-mail e das variáveis de ambiente correspondentes. Os recursos visuais (fontes e ícones) não dependem dessa conexão.

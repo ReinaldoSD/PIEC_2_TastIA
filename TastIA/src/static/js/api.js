@@ -28,6 +28,13 @@ const TastIAApi = (() => {
             );
         }
 
+        if (resposta.status === 401) {
+            const erro = new Error("Sua sessão expirou. Entre novamente.");
+            erro.status = 401;
+            window.location.replace("/login");
+            throw erro;
+        }
+
         const tipoConteudo = resposta.headers.get("content-type") || "";
         let dados = {};
 
@@ -37,15 +44,6 @@ const TastIAApi = (() => {
             } catch {
                 throw new Error("O servidor retornou uma resposta inválida.");
             }
-        }
-
-        if (resposta.status === 401) {
-            const erro = new Error("Sua sessão expirou. Entre novamente.");
-            erro.status = 401;
-            erro.dados = dados;
-
-            window.location.href = "/login";
-            throw erro;
         }
 
         if (!resposta.ok) {
@@ -72,6 +70,13 @@ const TastIAApi = (() => {
         post(url, dados) {
             return requisicao(url, {
                 method: "POST",
+                body: dados
+            });
+        },
+
+        put(url, dados) {
+            return requisicao(url, {
+                method: "PUT",
                 body: dados
             });
         },

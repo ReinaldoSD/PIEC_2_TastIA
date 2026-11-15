@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 
 <style>
     .tastia-sidebar {
@@ -293,7 +293,7 @@
             Conta
         </div>
 
-        <a href="{{ url_for('perfil') }}" title="Meu perfil" class="tastia-link {{ 'ativo' if request.endpoint == 'perfil' else '' }}">
+        <a href="{{ url_for('perfil.perfil') }}" title="Meu perfil" class="tastia-link {{ 'ativo' if request.endpoint == 'perfil' else '' }}">
             <span class="icone"><i class="fa-solid fa-circle-user"></i></span>
             <span class="sidebar-text">Meu perfil</span>
         </a>
@@ -340,7 +340,7 @@
                 Cancelar
             </button>
 
-            <a href="{{ url_for('logout') }}" class="flex-1 rounded-xl bg-red-500 px-4 py-3 text-center font-semibold text-white transition hover:bg-red-600">
+            <a href="{{ url_for('auth.logout') }}" class="flex-1 rounded-xl bg-red-500 px-4 py-3 text-center font-semibold text-white transition hover:bg-red-600">
                 Sim, sair
             </a>
 

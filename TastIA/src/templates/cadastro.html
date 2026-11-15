@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar conta | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -80,7 +80,7 @@
         <section class="flex items-center justify-center p-7 sm:p-10 md:p-12">
             <div class="w-full max-w-md">
 
-                <a href="{{ url_for('login') }}" class="mb-7 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600">
+                <a href="{{ url_for('auth.login') }}" class="mb-7 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600">
                     <i class="fa-solid fa-arrow-left"></i>
                     Já tenho uma conta
                 </a>
@@ -105,7 +105,7 @@
                     {% endif %}
                 {% endwith %}
 
-                <form action="{{ url_for('cadastro') }}" method="POST" class="space-y-4">
+                <form action="{{ url_for('auth.cadastro') }}" method="POST" class="space-y-4">
                     <div>
                         <label for="nome" class="mb-2 block text-sm font-semibold text-slate-700">Nome completo</label>
                         <div class="campo flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 transition">
@@ -155,7 +155,7 @@
                     </div>
 
                     <button type="submit"
-                        class="group flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 py-4 font-bold text-white shadow-lg shadow-blue-600/20 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/25 focus:outline-none focus:ring-4 focus:ring-blue-200">
+                        class="group flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 py-4 font-bold text-white shadow-lg shadow-blue-600/20 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/25 focus:outline-none focus:ring-4 focus:ring-blue-200" data-loading-text="Criando conta...">
                         Criar minha conta
                         <i class="fa-solid fa-arrow-right transition-transform group-hover:translate-x-1"></i>
                     </button>
@@ -163,7 +163,7 @@
 
                 <p class="mt-7 text-center text-sm text-slate-500">
                     Já possui uma conta?
-                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 transition hover:text-blue-800 hover:underline">Entrar</a>
+                    <a href="{{ url_for('auth.login') }}" class="font-bold text-blue-600 transition hover:text-blue-800 hover:underline">Entrar</a>
                 </p>
 
                 <p class="mt-6 text-center text-xs leading-5 text-slate-400">
@@ -177,22 +177,24 @@
         const senha = document.getElementById('senha');
         const confirmarSenha = document.getElementById('confirmar_senha');
         const mensagemSenha = document.getElementById('mensagemSenha');
-        const formulario = document.querySelector('form[action="{{ url_for("cadastro") }}"]');
+        const formulario = document.querySelector('form[action="{{ url_for("auth.cadastro") }}"]');
 
         document.getElementById('mostrarSenha').addEventListener('click', () => {
             const mostrar = senha.type === 'password';
             senha.type = mostrar ? 'text' : 'password';
-            document.getElementById('mostrarSenha').innerHTML = mostrar
-                ? '<i class="fa-regular fa-eye-slash"></i>'
-                : '<i class="fa-regular fa-eye"></i>';
+            const iconeSenha = document.createElement('i');
+            iconeSenha.className = mostrar ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            iconeSenha.setAttribute('aria-hidden', 'true');
+            document.getElementById('mostrarSenha').replaceChildren(iconeSenha);
         });
 
         document.getElementById('mostrarConfirmacao').addEventListener('click', () => {
             const mostrar = confirmarSenha.type === 'password';
             confirmarSenha.type = mostrar ? 'text' : 'password';
-            document.getElementById('mostrarConfirmacao').innerHTML = mostrar
-                ? '<i class="fa-regular fa-eye-slash"></i>'
-                : '<i class="fa-regular fa-eye"></i>';
+            const iconeConfirmacao = document.createElement('i');
+            iconeConfirmacao.className = mostrar ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            iconeConfirmacao.setAttribute('aria-hidden', 'true');
+            document.getElementById('mostrarConfirmacao').replaceChildren(iconeConfirmacao);
         });
 
         function validarSenhas() {
@@ -211,6 +213,18 @@
                 evento.preventDefault();
                 confirmarSenha.reportValidity();
             }
+        });
+    </script>
+    <script data-form-loading-handler>
+        document.querySelectorAll('form').forEach(formulario => {
+            formulario.addEventListener('submit', () => {
+                if (!formulario.checkValidity()) return;
+                const botao = formulario.querySelector('button[type="submit"]');
+                if (!botao || botao.disabled) return;
+                botao.disabled = true;
+                botao.setAttribute('aria-busy', 'true');
+                botao.textContent = botao.dataset.loadingText || 'Processando...';
+            });
         });
     </script>
 </body>

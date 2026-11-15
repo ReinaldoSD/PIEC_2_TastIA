@@ -6,9 +6,10 @@
     <title>Cadastrar ingredientes | TastIA</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 
-    <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
 </head>
 
 <body class="min-h-screen bg-blue-50 text-slate-800">
@@ -339,9 +340,7 @@
             // Busca até 8 sugestões da lista oficial (Issue #45)
             async function atualizarSugestoes(termo = '') {
                 try {
-                    const resp = await fetch(`/api/ingredientes/sugestoes?q=${encodeURIComponent(termo)}`);
-                    if (!resp.ok) return;
-                    const dados = await resp.json();
+                    const dados = await TastIAApi.get(`/api/ingredientes/sugestoes?q=${encodeURIComponent(termo)}`);
                     datalistSugestoes.replaceChildren();
                     (dados.itens || []).forEach(item => {
                         mapaCatSugestoes[item.nome.toLowerCase()] = item.categoria;
@@ -580,9 +579,7 @@
             async function aguardarTarefaFila(tarefaId) {
                 while (true) {
                     await new Promise(r => setTimeout(r, 1500));
-                    const resp = await fetch(`/api/ingredientes/status/${tarefaId}`);
-                    const info = await resp.json();
-                    if (!resp.ok) throw new Error(info.erro || 'Erro ao consultar fila.');
+                    const info = await TastIAApi.get(`/api/ingredientes/status/${tarefaId}`);
                     if (info.status === 'concluido') return info.resultado;
                     if (info.status === 'erro') throw new Error(info.erro || 'Erro no processamento da imagem.');
                 }
@@ -601,7 +598,14 @@
                 dados.append('assincrono', 'true');
 
                 btnDetectar.disabled = true;
-                btnDetectar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analisando imagem...';
+                        function definirBotaoComIcone(botao, classesIcone, texto) {
+            const icone = document.createElement('i');
+            icone.className = classesIcone;
+            icone.setAttribute('aria-hidden', 'true');
+            botao.replaceChildren(icone, document.createTextNode(' ' + texto));
+        }
+
+definirBotaoComIcone(btnDetectar, 'fa-solid fa-spinner fa-spin', 'Analisando imagem...');
 
                 areaConfirmacao.classList.add('hidden');
 
@@ -611,17 +615,9 @@
                 );
 
                 try {
-                    const resp = await fetch('/api/ingredientes/detectar', {
-                        method: 'POST',
-                        body: dados
-                    });
-                    let resposta = await resp.json();
+                    let resposta = await TastIAApi.post('/api/ingredientes/detectar', dados);
 
-                    if (!resp.ok) {
-                        throw new Error(resposta.erro || 'Falha ao processar imagem.');
-                    }
-
-                    if (resp.status === 202 && resposta.tarefa_id) {
+                    if (resposta.tarefa_id) {
                         resposta = await aguardarTarefaFila(resposta.tarefa_id);
                     }
 
@@ -671,7 +667,7 @@
 
                 } finally {
                     btnDetectar.disabled = false;
-                    btnDetectar.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Identificar ingredientes';
+                    definirBotaoComIcone(btnDetectar, 'fa-solid fa-wand-magic-sparkles', 'Identificar ingredientes');
                 }
             });
 
@@ -709,7 +705,7 @@
                 }
 
                 btnSalvarLote.disabled = true;
-                btnSalvarLote.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando ingredientes...';
+                definirBotaoComIcone(btnSalvarLote, 'fa-solid fa-spinner fa-spin', 'Salvando ingredientes...');
 
                 try {
                     const resposta = await TastIAApi.post(
@@ -727,7 +723,7 @@
                 } catch (erro) {
                     mostrarMensagem(erro.message || 'Não foi possível salvar os ingredientes.');
                     btnSalvarLote.disabled = false;
-                    btnSalvarLote.innerHTML = '<i class="fa-solid fa-check"></i> Salvar ingredientes selecionados';
+                    definirBotaoComIcone(btnSalvarLote, 'fa-solid fa-check', 'Salvar ingredientes selecionados');
                 }
             });
 
@@ -750,5 +746,17 @@
         });
     </script>
 
+    <script data-form-loading-handler>
+        document.querySelectorAll('form').forEach(formulario => {
+            formulario.addEventListener('submit', () => {
+                if (!formulario.checkValidity()) return;
+                const botao = formulario.querySelector('button[type="submit"]');
+                if (!botao || botao.disabled) return;
+                botao.disabled = true;
+                botao.setAttribute('aria-busy', 'true');
+                botao.textContent = botao.dataset.loadingText || 'Processando...';
+            });
+        });
+    </script>
 </body>
 </html>

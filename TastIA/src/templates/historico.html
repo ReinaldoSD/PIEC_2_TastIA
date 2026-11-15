@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Histórico | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 </head>
 
 <body class="min-h-screen bg-blue-50 font-['Inter'] text-slate-800">
@@ -189,7 +189,7 @@
     <script src="{{ url_for('static', filename='js/api.js') }}"></script>
     <script>
         const URL_LISTAR = "{{ url_for('receita.historico_listar') }}";
-        const URL_LOGIN = "{{ url_for('login') }}";
+        const URL_LOGIN = "{{ url_for('auth.login') }}";
         const URL_BEBIDA_EXCLUIR = "/api/bebida/historico";
 
         const busca = document.getElementById('busca-receita');

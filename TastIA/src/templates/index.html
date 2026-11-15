@@ -7,10 +7,6 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -49,6 +45,7 @@
             background: linear-gradient(100deg, #1d4ed8, #0f766e);
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 </head>
 
 <body class="min-h-screen bg-slate-950 text-slate-800">
@@ -73,11 +70,11 @@
         </a>
 
         <nav class="flex items-center gap-2 sm:gap-3">
-            <a href="{{ url_for('login') }}" class="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10 hover:text-white sm:px-4">
+            <a href="{{ url_for('auth.login') }}" class="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10 hover:text-white sm:px-4">
                 Entrar
             </a>
 
-            <a href="{{ url_for('cadastro') }}" class="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-black/30 transition hover:-translate-y-0.5 hover:bg-slate-200 sm:px-5">
+            <a href="{{ url_for('auth.cadastro') }}" class="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-black/30 transition hover:-translate-y-0.5 hover:bg-slate-200 sm:px-5">
                 Criar conta
             </a>
         </nav>
@@ -107,7 +104,7 @@
             </p>
 
             <div class="mt-9 flex flex-col gap-4 sm:flex-row">
-                <a href="{{ url_for('cadastro') }}" class="botao-principal inline-flex items-center justify-center gap-3 rounded-2xl px-7 py-4 font-semibold text-white shadow-xl shadow-blue-200/70 transition hover:-translate-y-1">
+                <a href="{{ url_for('auth.cadastro') }}" class="botao-principal inline-flex items-center justify-center gap-3 rounded-2xl px-7 py-4 font-semibold text-white shadow-xl shadow-blue-200/70 transition hover:-translate-y-1">
                     Começar agora
 
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -116,7 +113,7 @@
                     </svg>
                 </a>
 
-                <a href="{{ url_for('login') }}" class="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-7 py-4 font-semibold text-white backdrop-blur transition hover:border-white/40 hover:bg-white/20">
+                <a href="{{ url_for('auth.login') }}" class="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-7 py-4 font-semibold text-white backdrop-blur transition hover:border-white/40 hover:bg-white/20">
                     Já tenho uma conta
                 </a>
             </div>

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Definir nova senha | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 
     <style>
         body {
@@ -46,7 +46,7 @@
 
     <main class="cartao w-full max-w-lg rounded-3xl border border-white bg-white p-7 shadow-2xl shadow-blue-900/10 sm:p-10">
 
-        <a href="{{ url_for('recuperar_senha') }}" class="mb-9 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600">
+        <a href="{{ url_for('auth.recuperar_senha') }}" class="mb-9 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600">
             <i class="fa-solid fa-arrow-left"></i>
             Solicitar outro código
         </a>
@@ -81,7 +81,7 @@
             {% endif %}
         {% endwith %}
 
-        <form action="{{ url_for('redefinir_senha') }}" method="POST" class="space-y-5">
+        <form action="{{ url_for('auth.redefinir_senha') }}" method="POST" class="space-y-5">
 
             <div>
                 <label for="codigo" class="mb-2 block text-sm font-semibold text-slate-700">Código de recuperação</label>
@@ -137,7 +137,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="group flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 py-4 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200">
+            <button type="submit" class="group flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 py-4 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200" data-loading-text="Salvando senha...">
                 Salvar nova senha
                 <i class="fa-solid fa-arrow-right transition-transform group-hover:translate-x-1"></i>
             </button>
@@ -156,5 +156,17 @@
             © 2026 TastIA. Ideias para aproveitar melhor seus ingredientes.
         </p>
     </main>
+    <script data-form-loading-handler>
+        document.querySelectorAll('form').forEach(formulario => {
+            formulario.addEventListener('submit', () => {
+                if (!formulario.checkValidity()) return;
+                const botao = formulario.querySelector('button[type="submit"]');
+                if (!botao || botao.disabled) return;
+                botao.disabled = true;
+                botao.setAttribute('aria-busy', 'true');
+                botao.textContent = botao.dataset.loadingText || 'Processando...';
+            });
+        });
+    </script>
 </body>
 </html>

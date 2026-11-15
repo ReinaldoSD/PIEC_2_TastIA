@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventário | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
 </head>
 <body class="min-h-screen bg-blue-50 text-slate-800">
     <div class="flex min-h-screen">
@@ -269,9 +270,7 @@
 
         editNome.addEventListener('input', async () => {
             try {
-                const resp = await fetch(`/api/ingredientes/sugestoes?q=${encodeURIComponent(editNome.value.trim())}`);
-                if (!resp.ok) return;
-                const dados = await resp.json();
+                const dados = await TastIAApi.get(`/api/ingredientes/sugestoes?q=${encodeURIComponent(editNome.value.trim())}`);
                 datalistEdicao.replaceChildren();
                 (dados.sugestoes || []).forEach(nome => {
                     const opt = document.createElement('option');
@@ -301,10 +300,13 @@
                 const itemNome = btn.dataset.nome;
                 if (!confirm(`Deseja realmente remover "${itemNome}" do seu inventário?`)) return;
 
+                const textoOriginal = btn.textContent;
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.textContent = 'Removendo...';
+
                 try {
-                    const resp = await fetch(`/api/ingredientes/${itemId}`, { method: 'DELETE' });
-                    const dados = await resp.json();
-                    if (!resp.ok) throw new Error(dados.erro || 'Erro ao remover ingrediente.');
+                    const dados = await TastIAApi.delete(`/api/ingredientes/${itemId}`);
 
                     const cartao = btn.closest('.cartao-ingrediente');
                     if (cartao) cartao.remove();
@@ -314,6 +316,9 @@
                     avisoInventario.textContent = dados.mensagem || 'Ingrediente removido com sucesso!';
                     avisoInventario.classList.remove('hidden');
                 } catch (err) {
+                    btn.disabled = false;
+                    btn.removeAttribute('aria-busy');
+                    btn.textContent = textoOriginal;
                     avisoInventario.className = 'mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700';
                     avisoInventario.textContent = err.message;
                     avisoInventario.classList.remove('hidden');
@@ -340,18 +345,19 @@
                 validade: document.getElementById('editValidade').value || null
             };
 
+            const botaoSalvar = document.getElementById('btnSalvarEdicao');
+            const textoOriginal = botaoSalvar.textContent;
+            botaoSalvar.disabled = true;
+            botaoSalvar.setAttribute('aria-busy', 'true');
+            botaoSalvar.textContent = 'Salvando...';
+
             try {
-                const resp = await fetch(`/api/ingredientes/${itemId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const dados = await resp.json();
-                if (!resp.ok) {
-                    throw new Error(dados.erro || 'Erro ao editar ingrediente.');
-                }
+                await TastIAApi.put(`/api/ingredientes/${itemId}`, payload);
                 window.location.reload();
             } catch (err) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.removeAttribute('aria-busy');
+                botaoSalvar.textContent = textoOriginal;
                 erroModalEditar.textContent = err.message;
                 erroModalEditar.classList.remove('hidden');
             }

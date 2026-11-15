@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu perfil | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .perfil-card { animation: aparecer .5s ease-out; }
@@ -113,13 +113,13 @@
                                 Insira a sua senha atual para confirmar a sua identidade e desbloquear os campos de alteração.
                             </p>
 
-                            <form action="{{ url_for('confirmar_identidade') }}" method="POST" class="flex flex-col gap-3 sm:flex-row">
+                            <form action="{{ url_for('perfil.confirmar_identidade') }}" method="POST" class="flex flex-col gap-3 sm:flex-row">
                                 <div class="relative flex-1">
                                     <i class="fa-solid fa-key absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
                                     <input type="password" name="senha_confirmacao" required placeholder="Digite a sua senha atual"
                                         class="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-500">
                                 </div>
-                                <button type="submit" class="shrink-0 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-blue-700">
+                                <button type="submit" class="shrink-0 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-blue-700" data-loading-text="Verificando...">
                                     Confirmar senha
                                 </button>
                             </form>
@@ -139,7 +139,7 @@
                             </span>
                         </div>
 
-                        <form action="{{ url_for('atualizar_nome') }}" method="POST" class="space-y-4">
+                        <form action="{{ url_for('perfil.atualizar_nome') }}" method="POST" class="space-y-4">
                             <div>
                                 <label for="nome" class="mb-2 block text-sm font-semibold text-slate-600">Novo nome de usuário</label>
                                 <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 transition focus-within:border-blue-500 focus-within:bg-white">
@@ -149,7 +149,7 @@
                                 </div>
                             </div>
 
-                            <button type="submit" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-blue-700">
+                            <button type="submit" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-blue-700" data-loading-text="Atualizando nome...">
                                 Atualizar nome no banco de dados
                             </button>
                         </form>
@@ -161,7 +161,7 @@
                             <p class="mt-1 text-sm text-slate-500">Defina uma nova senha para a sua conta.</p>
                         </div>
 
-                        <form action="{{ url_for('alterar_senha') }}" method="POST" class="space-y-4">
+                        <form action="{{ url_for('perfil.alterar_senha') }}" method="POST" class="space-y-4">
                             <div>
                                 <label for="nova_senha" class="mb-2 block text-sm font-semibold text-slate-600">Nova senha</label>
                                 <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 transition focus-within:border-blue-500 focus-within:bg-white">
@@ -171,7 +171,7 @@
                                 </div>
                             </div>
 
-                            <button type="submit" class="rounded-xl border border-slate-200 bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800">
+                            <button type="submit" class="rounded-xl border border-slate-200 bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800" data-loading-text="Atualizando senha...">
                                 Atualizar senha no banco de dados
                             </button>
                         </form>
@@ -197,7 +197,7 @@
                     <h3 class="font-bold text-slate-900">Deseja terminar a sessão?</h3>
                     <p class="mt-1 text-sm text-slate-500">Encerre a sua sessão de forma segura neste dispositivo.</p>
                 </div>
-                <a href="{{ url_for('logout') }}" onclick="return confirm('Tem certeza de que deseja sair?')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-600 hover:text-white">
+                <a href="{{ url_for('auth.logout') }}" onclick="return confirm('Tem certeza de que deseja sair?')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-600 hover:text-white">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     Sair da conta
                 </a>
@@ -209,5 +209,17 @@
         </div>
     </main>
 
+    <script data-form-loading-handler>
+        document.querySelectorAll('form').forEach(formulario => {
+            formulario.addEventListener('submit', () => {
+                if (!formulario.checkValidity()) return;
+                const botao = formulario.querySelector('button[type="submit"]');
+                if (!botao || botao.disabled) return;
+                botao.disabled = true;
+                botao.setAttribute('aria-busy', 'true');
+                botao.textContent = botao.dataset.loadingText || 'Processando...';
+            });
+        });
+    </script>
 </body>
 </html>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Página inicial | TastIA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 </head>
 
 <body class="min-h-screen bg-slate-950 text-white">
@@ -107,7 +108,7 @@
 
             <footer class="border-t border-white/10 py-6 text-center text-sm text-slate-500">
                 TastIA — Inteligência Artificial para sua cozinha.
-                <a href="{{ url_for('logout') }}" class="ml-2 text-emerald-300 hover:underline">Sair da conta</a>
+                <a href="{{ url_for('auth.logout') }}" class="ml-2 text-emerald-300 hover:underline">Sair da conta</a>
             </footer>
         </main>
     </div>

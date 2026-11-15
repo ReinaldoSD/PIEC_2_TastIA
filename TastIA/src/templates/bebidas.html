@@ -6,10 +6,10 @@
     <title>Bebidas | TastIA</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-locais.css') }}">
 
-    <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
 
     <style>
         .bbx-resultado {
@@ -46,7 +46,7 @@
         }
 
         .bbx-titulo {
-            font-family: 'Sora', 'Inter', sans-serif;
+            font-family: 'Inter', 'Inter', sans-serif;
             font-size: clamp(1.4rem, 2.6vw, 1.9rem);
             font-weight: 600;
             letter-spacing: -.02em;
@@ -179,7 +179,7 @@
         }
 
         .bbx-nome {
-            font-family: 'Sora', 'Inter', sans-serif;
+            font-family: 'Inter', 'Inter', sans-serif;
             font-size: 1.35rem;
             font-weight: 600;
             line-height: 1.2;
@@ -528,7 +528,11 @@
             }
 
             const palco = el('div', 'bbx-palco');
-            palco.innerHTML = copoSVG(i);
+            const svgDocumento = new DOMParser().parseFromString(copoSVG(i), 'image/svg+xml');
+            const svgCopo = svgDocumento.documentElement;
+            if (svgCopo && svgCopo.namespaceURI === 'http://www.w3.org/2000/svg') {
+                palco.replaceChildren(document.importNode(svgCopo, true));
+            }
             card.appendChild(palco);
 
             const pts = Number(b.pontuacao) || 0;
