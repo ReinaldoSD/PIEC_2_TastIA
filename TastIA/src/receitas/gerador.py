@@ -1,4 +1,3 @@
-"""Geração de receitas do TastIA: prompt -> modelo -> limpeza do texto -> validação -> nova tentativa se preciso."""
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import date
@@ -18,7 +17,6 @@ MAX_URGENTES = 3          # exige no máximo os 3 que vencem primeiro (evita ped
 
 
 class InventarioVazioError(ValueError):
-    """Não há ingredientes (válidos) para gerar a receita."""
 
 
 @dataclass
@@ -85,7 +83,6 @@ def _tokens_da_receita(texto: str) -> set:
 
 
 def _urgentes_nao_usados(texto: str, urgentes: Sequence[str]) -> List[str]:
-    """Quais itens urgentes a receita NÃO menciona (compara pelo alimento principal do nome)."""
     # só conta o que aparece em 'Ingredientes' e 'Modo de preparo' (o título pode citar um item sem usá-lo)
     inicio = texto.find("\nIngredientes")
     usados = _tokens_da_receita(texto[inicio:] if inicio >= 0 else texto)
@@ -160,7 +157,7 @@ def gerar_receita(
         feitas += 1
         prompt = montar_prompt(ativos, pedido, tempo, dificuldade, restricoes, evitar, correcao, hoje)
         resultado = gerador.gerar_de_prompt(prompt, max_tokens)
-        texto = formatar_receita(resultado.texto)   # sem '##', '**', observações soltas etc.
+        texto = formatar_receita(resultado.texto, pedido)   # sem '##', '**', observações soltas etc.
         val = validar_receita(texto, nomes)
         falta = _urgentes_nao_usados(texto, urgentes) if val.estrutura_ok else list(urgentes)
         if melhor_val is None or _chave_qualidade(val, falta) < _chave_qualidade(melhor_val, melhor_falta):
