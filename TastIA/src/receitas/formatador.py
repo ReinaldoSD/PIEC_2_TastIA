@@ -1,25 +1,55 @@
+"""Limpeza e padronização do texto da receita gerada pela IA.
+
+O modelo de linguagem costuma devolver markdown ('# Título', '## Ingredientes', '**negrito**',
+'* item'), frases soltas antes do título ('Claro! Aqui está sua receita:'), observações no
+final ('Dica: ...') e, às vezes, a última frase cortada porque acabou o limite de tokens.
+
+Este módulo transforma tudo isso em um texto simples e sempre igual:
+
+    Título da receita
+    Tempo de preparo: 20 minutos
+    Porções: 2
+
+    Ingredientes
+    - 2 ovos
+    - 300 g de queijo ralado
+
+    Modo de preparo
+    1. Bata os ovos.
+    2. Junte o tomate.
+
+Nada vem depois do último passo (dicas, observações e "bom apetite" são descartados).
+Cada ingrediente fica só com a quantidade e o nome: nada de '(maduro)', ', picado' ou 'opcional' ao lado.
+O tempo de preparo é o tempo REAL dos passos (soma dos tempos citados + preparo), nunca o tempo máximo pedido.
+Roda sem modelo e sem internet, então é fácil de testar.
+"""
 import re
 from typing import List, Optional
 
-from receitas.validador import _eh_basico, _tokens_inventario, normalizar_texto
+from receitas.unidades import corrigir_linha_ingrediente
+from receitas.validador import ALIMENTOS, BASICOS, _canon, _palavras, normalizar_texto
 
 _RE_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _RE_TOKEN_ESPECIAL = re.compile(r"<\|[^|>]*\|>")
 _RE_CERCA = re.compile(r"^\s*(```|~~~).*$", re.MULTILINE)
-_RE_MARCADOR = re.compile(r"^(?:[-*•·+]|–|—)\s+(.*)$")
+_RE_MARCADOR = re.compile(r"^(?:[-•·+–—]\s*|\*\s+)(.*)$")   # '- 2 ovos', '-200 g', '• 2 ovos', '* 2 ovos'
 _RE_NUMERADO = re.compile(r"^\d+\s*[.)\-:]\s*(.*)$")
 _RE_TITULO_MD = re.compile(r"^#{1,6}\s*")
 
 _RE_H_ING = re.compile(r"^ingredientes?\b")
 _RE_H_PREPARO = re.compile(r"^(modo de (preparo|fazer)|preparo|instrucoes|como fazer|passo a passo)\b")
 _RE_TEMPO = re.compile(r"^tempo\b")
-_RE_PORCOES = re.compile(r"^(porc(ao|oes)|rendimento|serve)\b")
+_RE_PORCOES = re.compile(
+    r"^((porc(ao|oes)|rendimento|rende|serve)\b|quantidade\s*:|para\s+\d+|\d+\s*(porc|pessoa)|"
+    r"(numero|quantidade|total)\s+de\s+(porc|pessoa))"
+)
+_RE_OUTRA_META = re.compile(r"^(dificuldade|categoria|nivel|calorias|custo|refeicao)\b\s*:")
 _RE_FECHAMENTO = re.compile(
     r"^(dica|dicas|observac\w*|obs\b|nota|notas|bom apetite|espero|variac\w*|sugestao|sugestoes|"
-    r"curiosidade|informac\w*)\b"
+    r"curiosidade|informac\w*|receita completa|tempo total|nome do (prato|proto)|porcoes\s*:|"
+    r"combinac\w* que fazem sentido|formato\b|exemplo\b|escreva\b|prato\s*:)\b"
 )
 _RE_FIM_FRASE = re.compile(r"[.!?)\]\"']$")
-# Palavras que não terminam uma frase: se o texto acaba nelas, ele foi cortado no meio.
 _PALAVRAS_PENDENTES = {
     "de", "da", "do", "das", "dos", "a", "o", "as", "os", "e", "em", "com", "sem", "para", "por",
     "no", "na", "nos", "nas", "um", "uma", "ou", "ao", "aos", "alguns", "algumas", "que", "se",
@@ -48,7 +78,7 @@ def limpar_markdown(texto: Optional[str]) -> str:
     saida: List[str] = []
     for bruta in texto.replace("\r", "").splitlines():
         s = bruta.strip()
-        if not s or re.fullmatch(r"[-*_=]{3,}", s):  # linha em branco ou separador '---'
+        if not s or re.fullmatch(r"[-*_=]{3,}", s):
             continue
         s = _RE_TITULO_MD.sub("", s)
         s = re.sub(r"^>+\s*", "", s)
@@ -95,6 +125,159 @@ def _valor_apos_dois_pontos(linha: str) -> str:
     return linha.split(":", 1)[1].strip() if ":" in linha else ""
 
 
+def _numero_porcoes(valor: str) -> str:
+    """'4 pessoas' -> '4'; '4 a 6 porções' -> '4 a 6'. Sem número, devolve o texto como veio."""
+    m = re.search(r"\d+(?:\s*(?:a|ou|-|–)\s*\d+)?", valor)
+    return re.sub(r"\s+", " ", m.group(0)).strip() if m else valor.strip()
+
+
+PORCOES_PADRAO = "2"
+MINUTOS_POR_PASSO = 3
+
+
+def estimar_tempo(passos: List[str]) -> str:
+    """'cerca de 25 minutos', calculado pelos passos: soma os tempos citados ('por 10 minutos', '1 hora')
+    + 3 min por passo, arredondado para cima de 5 em 5 (mínimo 10). Usado só se o modelo não informou o tempo."""
+    citados = 0
+    for passo in passos:
+        for valor, unidade in re.findall(r"(\d+)\s*(horas?|h|minutos?|min)\b", normalizar_texto(passo)):
+            citados += int(valor) * (60 if unidade.startswith("h") else 1)
+    total = citados + MINUTOS_POR_PASSO * len(passos)
+    total = max(10, -(-total // 5) * 5)
+    return f"cerca de {total} minutos"
+
+
+# --------------------------------------------------------------------------- #
+# Tempo REAL de preparo
+# --------------------------------------------------------------------------- #
+MINUTOS_DE_PREPARO_POR_PASSO = 2
+_RE_TEMPO_CITADO = re.compile(r"(\d+(?:[.,]\d+)?)\s*(horas?|h|minutos?|min)\b")
+_RE_DOIS_LADOS = re.compile(r"\bde cada lado\b|\bdos dois lados\b")
+
+
+def minutos_citados(passos: List[str]) -> int:
+    """Soma dos tempos escritos nos passos ('por 10 minutos', '1 hora', 'meia hora', '2 minutos de cada lado')."""
+    total = 0.0
+    for passo in passos:
+        t = normalizar_texto(passo)
+        achado = 0.0
+        for valor, unidade in _RE_TEMPO_CITADO.findall(t):
+            numero = float(valor.replace(",", "."))
+            achado += numero * (60 if unidade.startswith("h") else 1)
+        if re.search(r"\bhora e meia\b", t):
+            achado += 30
+        if re.search(r"\bmeia hora\b", t):
+            achado += 30
+        if achado and _RE_DOIS_LADOS.search(t):
+            achado *= 2
+        total += achado
+    return int(round(total))
+
+
+def tempo_real_dos_passos(passos: List[str], extra: int = 0) -> int:
+    """Minutos REAIS da receita: tempos citados nos passos + 2 min de preparo por passo (+ extra), de 5 em 5."""
+    total = minutos_citados(passos) + MINUTOS_DE_PREPARO_POR_PASSO * len(passos) + max(0, int(extra))
+    return max(5, -(-total // 5) * 5)
+
+
+def _minutos_escritos(tempo: str) -> Optional[int]:
+    t = normalizar_texto(tempo or "")
+    horas = re.search(r"(\d+)\s*(?:h\b|hora)", t)
+    minutos = re.search(r"(\d+)\s*min", t)
+    if horas or minutos:
+        return (int(horas.group(1)) * 60 if horas else 0) + (int(minutos.group(1)) if minutos else 0)
+    numero = re.search(r"\d+", t)
+    return int(numero.group(0)) if numero else None
+
+
+def tempo_verdadeiro(tempo: str, passos: List[str], tempo_pedido: Optional[str] = None) -> str:
+    """O tempo que vai para a receita: o escrito, se for possível; senão o tempo REAL calculado pelos passos.
+
+    Troca o tempo escrito quando (1) falta, (2) é menor que a soma dos tempos dos próprios passos (impossível) ou
+    (3) é igual ao tempo máximo escolhido na tela e o cálculo pelos passos dá outro valor (o modelo copiou o pedido).
+    """
+    real = tempo_real_dos_passos(passos)
+    escrito = _minutos_escritos(tempo)
+    if escrito is None or escrito <= 0:
+        return f"{real} minutos"
+    if escrito < minutos_citados(passos):
+        return f"{real} minutos"
+    if tempo_pedido and str(tempo_pedido).strip().isdigit() and escrito == int(str(tempo_pedido).strip()) \
+            and abs(escrito - real) > 5:
+        return f"{real} minutos"
+    return tempo
+
+
+# --------------------------------------------------------------------------- #
+# Ingrediente = quantidade + nome (sem observação ao lado)
+# --------------------------------------------------------------------------- #
+_RE_PAREN_INGREDIENTE = re.compile(r"\s*\([^)]*\)?")
+_RE_NOTA_COM_TRACO = re.compile(r"\s+[-–—]\s+\S.*$")
+_RE_NOTA_DE_USO = re.compile(
+    r"\s+(?:para|pra)\s+(?:untar|decorar|enfeitar|servir|polvilhar|fritar|regar|temperar|finalizar|acompanhar|"
+    r"cobrir|empanar|rechear|a massa|o molho|a cobertura|o recheio)\b.*$", re.IGNORECASE)
+_RE_OPCIONAL = re.compile(r"\s*,?\s*\b(?:opcional|se quiser|se preferir|se gostar|se desejar|a sua escolha)\b.*$", re.IGNORECASE)
+_RE_QUANTIDADE_NA_NOTA = re.compile(r"^(a gosto|ao gosto|o suficiente|quanto baste|q\.?\s?b\.?)\b", re.IGNORECASE)
+
+
+def _nota_tem_alimento(nota: str) -> bool:
+    """True se o trecho depois da vírgula cita outro alimento ou básico ('sal, pimenta e orégano')."""
+    return any(sub in ALIMENTOS or sub in BASICOS for p in _palavras(nota) for sub in [_canon(x) for x in p.split("-")])
+
+
+def limpar_observacao_ingrediente(item: str) -> str:
+    """'- 2 tomates (maduros), picados' -> '- 2 tomates'; '- 1 cebola - para refogar' -> '- 1 cebola'.
+
+    Fica só a quantidade e o nome. Preserva 'a gosto' e linhas que listam mais de um alimento
+    ('sal, pimenta e orégano'), que o validador confere item por item.
+    """
+    s = item.strip()
+    if not s or s.endswith(":"):
+        return s
+    prefixo = "- " if s.startswith("- ") else ""
+    corpo = s[2:] if prefixo else s
+    corpo = _RE_PAREN_INGREDIENTE.sub("", corpo)
+    corpo = _RE_NOTA_COM_TRACO.sub("", corpo)
+    corpo = _RE_OPCIONAL.sub("", corpo)
+    corpo = _RE_NOTA_DE_USO.sub("", corpo)
+    if "," in corpo:
+        antes, depois = corpo.split(",", 1)
+        depois = depois.strip()
+        if _RE_QUANTIDADE_NA_NOTA.match(depois):
+            corpo = f"{antes.strip()} {depois}"
+        elif not _nota_tem_alimento(depois) and not re.match(r"^\d", depois):
+            corpo = antes
+    corpo = re.sub(r"\s+", " ", corpo).strip(" ,;.-–—")
+    return prefixo + corpo if corpo else ""
+
+
+
+def cortar_apos_ultimo_passo(linhas: List[str]) -> List[str]:
+    """Das linhas depois de 'Modo de preparo', fica só com os passos: nada pode vir depois do último.
+
+    Corta na primeira linha de fechamento ('Dica:', 'Observação:', 'Bom apetite!'...) ou, se os passos
+    são numerados, no primeiro texto solto depois do último passo numerado.
+    """
+    linhas = [l for l in linhas if l.strip()]
+    corte = None
+    for i, l in enumerate(linhas):
+        n = normalizar_texto(_sem_marcador(l)).strip(" :")
+        if (
+            _RE_FECHAMENTO.match(n)
+            or _RE_H_ING.match(n)
+            or _RE_H_PREPARO.match(n)
+            or _RE_TEMPO.match(n)
+            or _RE_PORCOES.match(n)
+        ):
+            corte = i
+            break
+    if corte is None:
+        numeradas = [i for i, l in enumerate(linhas) if _RE_NUMERADO.match(l.strip())]
+        if numeradas and numeradas[-1] + 1 < len(linhas):
+            corte = numeradas[-1] + 1
+    return linhas if corte is None else linhas[:corte]
+
+
 def _cortado(passo: str) -> bool:
     """True se o passo parece interrompido no meio da frase."""
     if _RE_FIM_FRASE.search(passo):
@@ -110,9 +293,14 @@ def _capitalizar(texto: str) -> str:
     return texto
 
 
-# Se o modelo copiar o modelo do prompt ("<Título da receita>") em vez de inventar o nome, não vale como título.
-_TITULOS_VAZIOS = {"titulo da receita", "nome da receita", "titulo", "nome", "receita", "titulo da receita aqui",
-                  "nome do prato", "prato", "nome da receita aqui"}
+_RE_TITULO_INVALIDO = re.compile(
+    r"^(numero de|quantidade de|total de|tempo\b|porc|dificuldade|ingredientes?\b|modo de|escreva|aqui esta|aqui vai|"
+    r"claro|segue|formato|combinac|exemplo|prato\s*:|foi feito)"
+)
+MAX_CHARS_TITULO = 90
+MAX_INGREDIENTES = 25   # o modelo às vezes entra em loop e repete temperos e variações sem parar
+
+_TITULOS_VAZIOS = {"titulo da receita", "nome da receita", "titulo", "nome", "receita", "titulo da receita aqui"}
 
 _UNIDADES = (
     r"kg|g|mg|ml|l|litros?|xicaras?|xic|copos?|colheres?|colher|c\.?\s*s\.?|c\.?\s*c\.?|sopa|cha|sobremesa|"
@@ -120,181 +308,40 @@ _UNIDADES = (
     r"pedacos?|cubos?|a gosto"
 )
 
-# Saudações e vocativos: "Olá!", "Bom dia, chef!", "Caro usuário,", "Pessoal,".
-_RE_SAUDACAO = re.compile(
-    r"^(?:"
-    r"(?:ola|oi+e?|opa|e ai|eai|fala|salve|hey|hello|hi|bom dia|boa tarde|boa noite|boa madrugada|"
-    r"bem[- ]vind[oa]s?|seja bem[- ]vind[oa]|tudo bem|tudo certo|tudo joia|como vai|como esta|"
-    r"saudacoes|cumprimentos|prezad[oa]s?|querid[oa]s?|caro usuario|cara usuaria|caro cliente|"
-    r"cara cliente|meu amigo|minha amiga|meus amigos)\b"
-    r"|(?:amig[oa]s?|pessoal|galera|gente|chef|cozinheir[oa]s?|usuari[oa]s?|cliente|senhor[a]?|sr|sra|"
-    r"doutor[a]?)(?=[,!:;.?]|$)"
-    r")"
+_RE_ROTULO_TITULO = re.compile(
+    r"^\s*(?:nome(?:\s+d[aeo]s?\s+(?:receita|prato|proto))?|t[ií]tulo(?:\s+d[aeo]s?\s+(?:receita|prato))?|receita|prato)"
+    r"\s*[:\-–—]\s*",
+    re.IGNORECASE,
 )
 
-# Apresentação da receita sem ambiguidade (nunca começa um nome de receita nem um passo).
-_RE_APRES_FORTE = re.compile(
-    r"^(?:"
-    r"aqui (?:esta|estao|vai|vem|tem|temos|segue|seguem|fica|ficam|vao)|ai (?:esta|vai|vem)|la vai|eis\b|"
-    r"segue\b|seguem\b|"
-    r"vou (?:te |lhe )?(?:criar|fazer|preparar|sugerir|montar|elaborar|gerar|ajudar|cozinhar|desenvolver|"
-    r"apresentar|compartilhar|trazer|passar|escrever|dar|mostrar|propor|indicar|buscar|pensar|usar|utilizar)|"
-    r"vamos (?:la|comecar|cozinhar|preparar|fazer|criar|começar)|bora\b|mao na massa|pronto para|"
-    r"irei\b|posso (?:te |lhe )?(?:sugerir|criar|fazer|preparar|ajudar|apresentar|montar)|"
-    r"deixa eu|deixe-me|permita-me|gostaria de|"
-    r"preparei|criei|montei|gerei|elaborei|desenvolvi|preparamos|criamos|escolhi|selecionei|pensei|separei|"
-    r"sugiro|recomendo|proponho|minha (?:sugestao|receita|ideia|proposta)|sugestao de receita|"
-    r"espero\b|tomara|desejo\b|"
-    r"como (?:assistente|tastia|ia\b|um assistente|uma ia|chef|modelo)|sou (?:o|a|um|uma) |eu sou|me chamo|meu nome|"
-    r"voce (?:pediu|solicitou|quer|queria|gostaria|tem|possui|disse|informou|forneceu)|"
-    r"here (?:is|are|s)\b|here's|below is|this is\b|let me|let's|i (?:will|ll|can|have|would)|i'll|"
-    r"obrigad[oa]|agradeco|valeu|desculp\w*|perdao|lamento|sinto muito|peco desculpas|"
-    r"entendo\b|compreendo|percebi|notei|corrigindo|refiz|refeita|nova versao|versao corrigida|correcao"
-    r")"
-)
 
-# Apresentação mais genérica: vale para o TÍTULO, mas não para linhas do preparo
-_RE_APRES_FRACA = re.compile(
-    r"^(?:"
-    r"a seguir|abaixo|logo abaixo|veja\b|confira|olha\b|vamos\b|"
-    r"com (?:base|os ingredientes|o que|as informacoes|esses|estes|aquilo|tudo)|de acordo|conforme|"
-    r"como (?:solicitado|pedido|combinado|requisitado|desejado|sugerido|voce|ha|nao|so|tem|esta)|"
-    r"considerando|usando|utilizando|baseado|baseada|baseando|pensando|levando em|tendo em|dado que|dados os|"
-    r"partindo|a partir|seguindo|respeitando|atendendo|apenas com|somente com|so com|ja que|visto que|"
-    r"uma vez que|"
-    r"para (?:voce|voces|atender|aproveitar|usar|utilizar|seguir|cumprir|o seu|a sua|os seus|as suas|"
-    r"seu |sua |o pedido|resolver)|"
-    r"que tal|uma (?:receita|sugestao|opcao|ideia|proposta|otima|deliciosa|boa)|essa receita|esta receita|"
-    r"sua receita|a receita (?:de hoje|abaixo|a seguir|sugerida|que|e a|ficou)|"
-    r"receita (?:sugerida|para voce|personalizada|abaixo|a seguir|pronta|de hoje)|"
-    r"importante|atencao|aviso\b|nota\b|notas\b|observacao|observacoes|obs\b|lembre|lembrando|lembrete|"
-    r"vale (?:lembrar|ressaltar|destacar)|cabe (?:lembrar|ressaltar)|ressalto|informo|"
-    r"primeiro(?:,| vou| preciso)|vamos ver|deixa ver|analisando|analisei|verificando|"
-    r"pedido\b|resposta\b|resultado\b|saida\b|assistente\b|tastia\b|system\b|user\b|assistant\b"
-    r")"
-)
-
-# Interjeições coladas na frente da frase: "Claro! ...", "Com certeza, ...", "Ótima escolha! ...".
-_RE_INTERJEICAO = re.compile(
-    r"^\s*(?:"
-    r"claro(?: que sim)?|certo|ok|okay|perfeito|[oó]timo|excelente|entendi|entendido|beleza|combinado|"
-    r"com certeza|certamente|sem problemas?|pois n[aã]o|tudo bem|sim|l[oó]gico|show|legal|maravilha|"
-    r"fant[aá]stic[oa]|pronto|feito|uau|hum+|hmm+|bem|ent[aã]o|bom|adorei|"
-    r"sure|of course|certainly|great|thanks|thank you|"
-    r"[oó]tim[ao] (?:escolha|ideia|id[eé]ia|pedido)|boa (?:escolha|ideia|id[eé]ia)|"
-    r"excelente (?:escolha|ideia|id[eé]ia)|que (?:legal|[oó]timo|bom|del[ií]cia)"
-    r")\s*(?:[!,.:;…\-–—]+|$)\s*",
-    re.I,
-)
-
-# Palavras que não aparecem em nome de receita, mas aparecem em conversa.
-_PALAVRAS_DE_CONVERSA = {
-    "voce", "voces", "seu", "sua", "seus", "suas", "eu", "vou", "vamos", "posso", "podemos", "espero",
-    "aqui", "obrigado", "obrigada", "tastia", "assistente", "pedido", "ingredientes", "disponiveis",
-    "inventario", "prezado", "prezada", "ola", "oi", "favor", "gostaria", "desculpe", "desculpa",
-    "te", "lhe", "hello", "here", "sure", "please",
-}
-
-_MAX_PALAVRAS_TITULO = 10
-_MAX_CHARS_TITULO = 70
-
-
-def _tirar_interjecao(texto: str) -> str:
-    """'Claro! Omelete de tomate' -> 'Omelete de tomate'. Repete caso venha mais de uma ('Ok, claro! ...')."""
+def limpar_titulo(texto: Optional[str]) -> str:
+    """'Nome: Omelete de tomate' -> 'Omelete de tomate'. Devolve '' se sobrar só um rótulo vazio ('Nome da receita')."""
+    if str(texto or "").rstrip().endswith(":"):   # 'Escreva a receita solicitada:' não é nome de prato
+        return ""
+    t = str(texto or "").strip(" :.\"'<>*#")
     for _ in range(3):
-        novo = _RE_INTERJEICAO.sub("", texto, count=1)
-        if novo == texto:
+        novo = _RE_ROTULO_TITULO.sub("", t).strip(" :.\"'<>*#")
+        if novo == t:
             break
-        texto = novo
-    return texto
-
-
-def _resto_normalizado(linha: str) -> str:
-    texto = _tirar_interjecao(_sem_marcador(linha))
-    return normalizar_texto(texto).strip(" ,.!?:;-–—…\"'*<>")
-
-
-def _casa_listas(resto: str, fraca: bool) -> bool:
-    return bool(
-        _RE_SAUDACAO.match(resto)
-        or _RE_APRES_FORTE.match(resto)
-        or (fraca and _RE_APRES_FRACA.match(resto))
-    )
-
-
-def eh_conversa_do_modelo(linha: str, estrito: bool = True) -> bool:
-    resto = _resto_normalizado(linha)
-    if not resto:   # só tinha 'Claro!' / 'Ok.'
-        return True
-    if _casa_listas(resto, fraca=estrito):
-        return True
-    if "," in resto:   # vocativo + frase: "Maria, aqui está sua receita"
-        depois = resto.split(",", 1)[1].strip(" ,")
-        if depois and _casa_listas(depois, fraca=estrito):
-            return True
-    if not estrito:
-        return False
-    palavras = re.findall(r"[a-z]+", resto)
-    if _PALAVRAS_DE_CONVERSA.intersection(palavras):
-        return True
-    # frase longa terminada em ponto não é nome de receita
-    return len(palavras) >= 8 and _sem_marcador(linha).rstrip().endswith(".")
-
-
-def _conversa_solta(linha: str) -> bool:
-    """Linha SEM marcador/numeração dentro de 'Ingredientes' ou 'Modo de preparo' que é só conversa."""
-    return (not linha.startswith("- ") and not linha[:1].isdigit()
-            and eh_conversa_do_modelo(linha, estrito=False))
-
-
-def _titulo_limpo(linha: str) -> str:
-    original = _sem_marcador(linha).strip()
-    uteis = []
-    for trecho in re.split(r"(?<=[.!?:…])\s+", original):
-        trecho = trecho.strip()
-        if not trecho or trecho.endswith(("!", "?")) or eh_conversa_do_modelo(trecho):
-            continue
-        uteis.append(trecho)
-    t = " ".join(uteis).strip(" \"'<>*")
-    # tira rótulos como "Título:", "Nome da receita:", "Receita:" (com ou sem acento)
-    m = re.match(r"^(nome da receita|receita|t[ií]tulo)\s*:\s*(.*)$", t, flags=re.I)
-    if m:
-        t = m.group(2).strip(" \"'<>*")
-    if not t or t.endswith(":") or re.search(r"[!?]", t):
+        t = novo
+    n = normalizar_texto(t).strip()
+    if n in _TITULOS_VAZIOS or _RE_TITULO_INVALIDO.match(n) or len(t) > MAX_CHARS_TITULO:
         return ""
-    t = t.rstrip(". ")
-    nt = normalizar_texto(t).strip()
-    if nt in _TITULOS_VAZIOS or nt.startswith(("nome do prato", "nome da receita", "titulo da receita")):
-        return ""   # copiou o modelo do prompt
-    if len(t.split()) > _MAX_PALAVRAS_TITULO or len(t) > _MAX_CHARS_TITULO:
-        return ""   # parágrafo, não título
-    if eh_conversa_do_modelo(t):   # ex.: "Título: aqui está a receita"
-        return ""
-    return _padronizar_titulo(t)
-
-
-_RE_EMOJI = re.compile("[\U00010000-\U0010ffff\u2600-\u27bf\u2b50\ufe0f]")
-
-
-def _padronizar_titulo(t: str) -> str:
-    t = _RE_EMOJI.sub("", t)
-    t = re.sub(r"\s+", " ", t).strip(" -–—,;")
-    # 'Receita de bolo de cenoura' -> 'Bolo de cenoura' (só tira se sobrar algo; 'Receita com ovos' fica)
-    m = re.match(r"^receita\s+(?:de|da|do|das|dos)\s+(.+)$", t, flags=re.I)
-    if m:
-        t = m.group(1)
-    palavras = [w for w in t.split() if any(c.isalpha() for c in w)]
-    if palavras and (t.isupper() or (len(palavras) >= 2 and all(w[:1].isupper() for w in palavras))):
-        t = t.lower()   # 'OMELETE DE TOMATE' / 'Omelete De Tomate' -> 'Omelete de tomate'
     return _capitalizar(t)
 
 
+def _titulo_limpo(linha: str) -> str:
+    return limpar_titulo(_sem_marcador(linha))
+
+
 def _nome_do_ingrediente(item: str) -> str:
+    """'- 2 colheres de sopa de azeite' -> 'azeite' (tira marcador, quantidade e unidade)."""
     s = re.sub(r"^[-*•]\s*", "", item).strip()
     s = re.sub(r"\(.*?\)", "", s)
     s = re.sub(r"^[\d½¼¾⅓⅔/.,\s]+", "", s)
     s = s.split(",")[0].strip()
-    for _ in range(3):  # "colheres de sopa de azeite": tira unidade e "de" repetidos
+    for _ in range(3):
         novo = re.sub(rf"^(?:{_UNIDADES})\b\.?\s*(?:de |do |da |d')?", "", s, flags=re.I).strip()
         if novo == s:
             break
@@ -302,91 +349,59 @@ def _nome_do_ingrediente(item: str) -> str:
     return s.strip(" .-")
 
 
-# Tipo de prato citado no pedido -> (rótulo, gênero). Usado só no título de reserva.
-_TIPOS_DE_PRATO = [
-    (r"\bcafe da manha\b|\bdesjejum\b", "Café da manhã", "m"),
-    (r"\balmoc\w*", "Almoço", "m"),
-    (r"\bjant\w*", "Jantar", "m"),
-    (r"\blanch\w*", "Lanche", "m"),
-    (r"\bsobremesa\w*", "Sobremesa", "f"),
-    (r"\bsopa\w*|\bcaldo\w*", "Sopa", "f"),
-    (r"\bsalada\w*", "Salada", "f"),
-    (r"\bomelete\w*", "Omelete", "m"),
-    (r"\bbolo\w*", "Bolo", "m"),
-    (r"\bpanqueca\w*", "Panqueca", "f"),
-    (r"\bsanduiche\w*", "Sanduíche", "m"),
-    (r"\bvitamina\w*", "Vitamina", "f"),
-]
-# adjetivo citado no pedido -> (masculino, feminino)
-_ADJETIVOS_DO_PEDIDO = [
-    (r"\bleve\b|\bleves\b", "leve", "leve"),
-    (r"\brapid[oa]s?\b", "rápido", "rápida"),
-    (r"\bsimples\b", "simples", "simples"),
-    (r"\bsaudavel\b|\bsaudaveis\b", "saudável", "saudável"),
-]
+_RE_PESO_VOLUME = re.compile(r"^(\d+(?:[.,]\d+)?)\s*(kg|g|mg|ml|l)\b\.?\s*(?:de\s+)?(?=[^\W\d_])", re.I)
 
 
-def _rotulo_do_pedido(pedido: Optional[str]) -> str:
-    """'lanche leve em 15 minutos' -> 'Lanche leve'. Devolve '' se o pedido não diz o tipo de prato."""
-    n = normalizar_texto(pedido or "")
-    for padrao, rotulo, genero in _TIPOS_DE_PRATO:
-        if re.search(padrao, n):
-            for pad_adj, masc, fem in _ADJETIVOS_DO_PEDIDO:
-                if re.search(pad_adj, n):
-                    return f"{rotulo} {masc if genero == 'm' else fem}"
-            return rotulo
-    return ""
+def _padronizar_quantidade(item: str) -> str:
+    """'300g queijo ralado' -> '300 g de queijo ralado' (peso/volume sempre com espaço e 'de')."""
+    return _RE_PESO_VOLUME.sub(lambda m: f"{m.group(1)} {m.group(2).lower()} de ", item.strip())
 
 
-def _titulo_pelos_ingredientes(ingredientes: List[str], pedido: Optional[str] = None) -> str:
-    def coletar(pular_basicos: bool) -> List[str]:
-        achados: List[str] = []
-        for item in ingredientes:
-            if item.endswith(":"):
-                continue
-            nome = _nome_do_ingrediente(item)
-            if not nome or normalizar_texto(nome) in {normalizar_texto(n) for n in achados}:
-                continue
-            if pular_basicos and _eh_basico(_tokens_inventario(nome)):
-                continue   # 'Receita com sal, água e óleo' não ajuda ninguém
-            achados.append(nome.lower())
-            if len(achados) == 3:
-                break
-        return achados
-
-    prefixo = _rotulo_do_pedido(pedido) or "Receita"
-    nomes = coletar(True) or coletar(False)
+def _titulo_pelos_ingredientes(ingredientes: List[str]) -> str:
+    """Título de reserva quando o modelo não escreve o nome: 'Receita com ovos e tomate'."""
+    nomes: List[str] = []
+    for item in ingredientes:
+        if item.endswith(":"):
+            continue
+        nome = _nome_do_ingrediente(item)
+        if nome and normalizar_texto(nome) not in {normalizar_texto(n) for n in nomes}:
+            nomes.append(nome.lower())
+        if len(nomes) == 3:
+            break
     if not nomes:
-        return prefixo if prefixo != "Receita" else "Receita do dia"
+        return "Receita do dia"
     if len(nomes) == 1:
-        return f"{prefixo} com {nomes[0]}"
-    return f"{prefixo} com " + ", ".join(nomes[:-1]) + " e " + nomes[-1]
+        return f"Receita com {nomes[0]}"
+    return "Receita com " + ", ".join(nomes[:-1]) + " e " + nomes[-1]
 
 
-def formatar_receita(texto: Optional[str], pedido: Optional[str] = None) -> str:
+def _estruturar(texto: Optional[str], corrigir_unidades: bool = True):
+    """Lê o texto da receita. Devolve (texto_limpo, dados); dados é None se faltar 'Ingredientes' ou 'Modo de preparo'."""
     limpo = limpar_markdown(texto)
     linhas = limpo.splitlines()
 
     idx_ing = next((i for i, l in enumerate(linhas) if _eh_cabecalho_ing(l)), None)
     if idx_ing is None:
-        return limpo
+        return limpo, None
     idx_prep = next((i for i, l in enumerate(linhas) if i > idx_ing and _eh_cabecalho_preparo(l)), None)
     if idx_prep is None:
-        return limpo
+        return limpo, None
 
-    # Título = primeira linha antes de 'Ingredientes' que seja um nome de receita de verdade.
-    # Saudações, vocativos ("Olá!", "Claro! Aqui está sua receita:") e frases soltas são descartados;
-    # se nada sobrar, o título vem do fallback pelos ingredientes (mais abaixo).
     titulo, tempo, porcoes = "", "", ""
-    for l in linhas[:idx_ing]:
-        n = normalizar_texto(l).strip()
+    for j in range(idx_ing - 1, -1, -1):
+        n = normalizar_texto(linhas[j]).strip()
         if _RE_TEMPO.match(n):
-            tempo = tempo or _valor_apos_dois_pontos(l) or _sem_marcador(l)
+            tempo = tempo or _valor_apos_dois_pontos(linhas[j]) or _sem_marcador(linhas[j])
         elif _RE_PORCOES.match(n):
-            porcoes = porcoes or _valor_apos_dois_pontos(l) or _sem_marcador(l)
-        elif not titulo:
-            titulo = _titulo_limpo(l)
-    # Tempo/porções também podem vir depois do título, dentro do bloco de ingredientes.
+            porcoes = porcoes or _valor_apos_dois_pontos(linhas[j]) or _sem_marcador(linhas[j])
+        elif _RE_OUTRA_META.match(n):
+            continue
+        else:
+            candidato = _titulo_limpo(linhas[j])
+            if candidato or idx_ing - j >= 4:
+                titulo = candidato
+                break
+
     ingredientes: List[str] = []
     vistos = set()
     for l in linhas[idx_ing + 1:idx_prep]:
@@ -397,45 +412,83 @@ def formatar_receita(texto: Optional[str], pedido: Optional[str] = None) -> str:
         if _RE_PORCOES.match(n) and ":" in l:
             porcoes = porcoes or _valor_apos_dois_pontos(l)
             continue
-        if _conversa_solta(l):   # 'Aqui estão os ingredientes:' não é ingrediente
-            continue
         item = _sem_marcador(l)
+        if not item.endswith(":"):
+            item = limpar_observacao_ingrediente(item)
         chave = normalizar_texto(item)
         if not item or chave in vistos:
             continue
         vistos.add(chave)
+        if not item.endswith(":"):
+            nome = normalizar_texto(_nome_do_ingrediente(item))
+            if nome and ("nome", nome) in vistos:
+                continue                      # o mesmo ingrediente de novo (outra quantidade): fica o primeiro
+            if nome:
+                vistos.add(("nome", nome))
+            if sum(1 for i in ingredientes if not i.endswith(":")) >= MAX_INGREDIENTES:
+                break
+            item = _padronizar_quantidade(item)
+            if corrigir_unidades:
+                item = corrigir_linha_ingrediente(item)
         ingredientes.append(item if item.endswith(":") else "- " + item)
 
-    # Modo de preparo: descarta fechamentos ('Dica:', 'Bom apetite!') e repetições.
+    linhas_passos = cortar_apos_ultimo_passo(linhas[idx_prep + 1:])
     passos: List[str] = []
     vistos = set()
-    for l in linhas[idx_prep + 1:]:
-        if _conversa_solta(l):   # 'Vamos lá!' / 'Aqui estão os passos:' não é passo
+    for l in linhas_passos:
+        passo = re.sub(r":\.+$", ":", _sem_marcador(l)).strip()
+        if not passo or passo.endswith(":"):
             continue
-        passo = _sem_marcador(l)
-        if _RE_FECHAMENTO.match(normalizar_texto(passo)):
-            break
         chave = normalizar_texto(passo)
-        if not passo or chave in vistos:
+        if chave in vistos or " = " in passo or chave == normalizar_texto(titulo).strip():
             continue
         vistos.add(chave)
         passos.append(passo)
 
-    # Última frase cortada pelo limite de tokens (acaba no meio, ex.: "... por alguns"): remove.
     if len(passos) > 1 and _cortado(passos[-1]):
         passos.pop()
     passos = [_capitalizar(p if _RE_FIM_FRASE.search(p) else p + ".") for p in passos]
 
     if not ingredientes or not passos:
-        return limpo
-    if not titulo:   # o modelo esqueceu o nome (ou copiou o "<Título da receita>" do prompt)
-        titulo = _titulo_pelos_ingredientes(ingredientes, pedido)
+        return limpo, None
+    return limpo, {
+        "titulo": titulo,
+        "tempo": tempo.strip(),
+        "porcoes": _numero_porcoes(porcoes) if porcoes else "",
+        "ingredientes": ingredientes,
+        "passos": passos,
+    }
 
-    partes = [titulo]
-    if tempo:
-        partes.append("Tempo de preparo: " + tempo)
-    if porcoes:
-        partes.append("Porções: " + porcoes)
+
+def formatar_receita(texto: Optional[str], tempo_pedido: Optional[str] = None) -> str:
+    """Devolve a receita em texto simples e padronizado (veja o exemplo no topo do arquivo).
+
+    tempo_pedido: o tempo máximo escolhido na tela ('15', '30'...). Serve só para NÃO deixar o modelo copiá-lo como se
+    fosse o tempo da receita: o tempo escrito é sempre o tempo real dos passos.
+    """
+    limpo, d = _estruturar(texto)
+    if d is None:
+        return limpo
+
+    titulo = d["titulo"] or _titulo_pelos_ingredientes(d["ingredientes"])
+    tempo = tempo_verdadeiro(d["tempo"], d["passos"], tempo_pedido)
+    return montar_texto(titulo, tempo, d["porcoes"], d["ingredientes"], d["passos"])
+
+
+def montar_texto(titulo: str, tempo: str, porcoes: str, ingredientes: List[str], passos: List[str]) -> str:
+    """Monta o texto padrão da receita (título, tempo, porções, ingredientes com '- ' e passos numerados)."""
+    if re.fullmatch(r"\d+", tempo):
+        tempo += " minutos"
+    partes = [titulo, "Tempo de preparo: " + tempo, "Porções: " + (porcoes or PORCOES_PADRAO)]
     partes += ["", "Ingredientes"] + ingredientes
     partes += ["", "Modo de preparo"] + [f"{i}. {p}" for i, p in enumerate(passos, 1)]
     return "\n".join(partes)
+
+
+def campos_ausentes(texto: Optional[str]) -> List[str]:
+    """Campos do cabeçalho que o MODELO não escreveu: 'título', 'tempo de preparo', 'porções'."""
+    _, d = _estruturar(texto)
+    if d is None:
+        return []
+    return [nome for nome, chave in (("título", "titulo"), ("tempo de preparo", "tempo"), ("porções", "porcoes"))
+            if not d[chave]]
