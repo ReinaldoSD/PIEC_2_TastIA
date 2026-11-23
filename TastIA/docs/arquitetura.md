@@ -1,136 +1,128 @@
 # Arquitetura do TastIA
 
-**Projeto:** Projeto Interdisciplinar em Engenharia da Computação 2 (UAB00073)  
-**Instituição:** UABJ/UFRPE  
-**Professora:** Camila Ascendina  
-**Integrantes:** Everton Guilherme Marinho Silva, José Ednaldo dos Santos Filho, Luiz Eduardo Cordeiro Araujo e Reinaldo Sergio Dias da Silva.
+**Projeto Interdisciplinar em Engenharia da Computação 2 (UAB00073)**, UABJ/UFRPE
+**Professora:** Camila Ascendina
+**Equipe:** Everton Guilherme Marinho Silva, José Ednaldo dos Santos Filho, Luiz Eduardo Cordeiro Araujo e Reinaldo Sergio Dias da Silva
 
 ---
 
-## 1. Visão geral
+## 1. Resumo
 
-O TastIA é uma aplicação web que utiliza inteligência artificial para ajudar o usuário a aproveitar os alimentos que já possui em casa. O sistema permite cadastrar ingredientes manualmente ou por fotografias, organizar um inventário com quantidades e datas de validade, gerar receitas personalizadas e recomendar bebidas que combinem com as refeições.
+O TastIA é uma aplicação web em **Python com Flask**. O usuário cadastra os ingredientes que tem em casa (por foto ou à mão) e o sistema gera receitas e sugere bebidas. Tudo roda em um único programa: não há vários servidores nem serviços separados.
 
-A identificação dos ingredientes por imagem é apresentada ao usuário para conferência antes de ser adicionada ao inventário. Na geração de receitas, o sistema considera os ingredientes disponíveis e prioriza aqueles que estão próximos do vencimento.
+## 2. Visão em blocos
 
-## 2. Organização do sistema
+```
+┌──────────────────────────────────────────────┐
+│  Navegador (HTML + CSS + JavaScript)         │
+└───────────────────────┬──────────────────────┘
+                        │ páginas e requisições JSON
+┌───────────────────────▼──────────────────────┐
+│  Flask: app.py (páginas) + rotas/ (API)      │
+└──┬──────────────┬──────────────┬─────────────┘
+   │              │              │
+┌──▼───────┐ ┌────▼─────┐ ┌──────▼─────┐   ┌──────────────┐
+│percepcao/│ │receitas/ │ │ bebidas/   │   │ banco_dados/ │
+│ foto →   │ │ pedido → │ │ prato →    │   │   SQLite     │
+│ itens    │ │ receita  │ │ 3 bebidas  │   │              │
+└──────────┘ └──────────┘ └────────────┘   └──────────────┘
+        (servicos/ dá apoio: fila, imagem, e-mail, modelos)
+```
 
-O TastIA utiliza uma arquitetura modular desenvolvida em Python com Flask. Seus módulos fazem parte da mesma aplicação e trabalham em conjunto.
+## 3. Os módulos
 
-As principais partes são:
+### 3.1 Percepção: da foto aos ingredientes
 
-- **Interface web:** permite acessar as funcionalidades do sistema por meio de páginas HTML, estilos CSS e JavaScript.
-- **Backend e API:** recebe as solicitações da interface, aplica as regras do sistema e coordena os módulos.
-- **Percepção computacional:** analisa fotografias para localizar e classificar possíveis ingredientes.
-- **Geração de receitas:** utiliza as informações do inventário e o pedido do usuário para produzir receitas, que passam por validação.
-- **Recomendação de bebidas:** compara as características da refeição com um catálogo e apresenta opções compatíveis.
-- **Banco de dados:** armazena usuários, ingredientes, receitas, bebidas escolhidas e informações de recuperação de senha.
+1. A foto é validada e reduzida (`servicos/imagem_servico.py`).
+2. O **Florence-2** localiza os objetos na imagem.
+3. Cada objeto é recortado e o **CLIP** diz qual alimento é, comparando o recorte com descrições de ingredientes.
+4. Se nada aproveitável for encontrado, o sistema tenta de novo com a imagem inteira e com partes dela (o "plano B" da percepção).
+5. O resultado vai para a tela. Itens com baixa confiança aparecem **desmarcados**, e o usuário confere tudo antes de salvar.
 
-## 3. Funcionamento dos principais módulos
+### 3.2 Receitas: do pedido à receita
 
-### 3.1. Identificação de ingredientes
+O modelo de linguagem usado é pequeno e erra com facilidade, então o sistema não confia só nele. O processo tem camadas:
 
-Quando o usuário envia uma fotografia, o sistema valida e prepara a imagem para análise. Em seguida, utiliza o Florence-2 para localizar objetos e o CLIP para classificar os recortes identificados. Caso a primeira análise não produza resultados aproveitáveis, o sistema também pode analisar a imagem completa e partes dela.
+1. **Inventário.** Itens vencidos são ignorados. Os que vencem em até 3 dias têm prioridade.
+2. **Esqueleto.** O código escolhe o prato e escreve título, tempo, porções e ingredientes com quantidades coerentes. O **SmolLM3** escreve só o modo de preparo.
+3. **Limpeza e reparos.** O texto é limpo e corrigido (ingredientes esquecidos, quantidades absurdas, unidades erradas).
+4. **Validação.** Confere o formato, se só usa ingredientes do inventário, se os alimentos combinam e se respeita as restrições pedidas. Se falhar, o sistema tenta de novo (até 2 tentativas por padrão).
+5. **Plano B.** Se a receita continuar ruim, ela é trocada por uma de **30 receitas prontas**, montadas com o que o usuário tem.
+6. **Aprovação.** O usuário pode aprovar a receita antes de ela entrar no histórico.
 
-Os ingredientes identificados são apresentados ao usuário, que pode revisar as sugestões antes de confirmar o cadastro no inventário.
+### 3.3 Bebidas: do prato às sugestões
 
-### 3.2. Geração de receitas
+- O catálogo tem **40 bebidas sem álcool**.
+- O **MiniLM** transforma o texto do prato e as descrições das bebidas em números e compara as semelhanças.
+- Regras gastronômicas (por exemplo, evitar algo muito doce com um prato doce) e os filtros do usuário (sem lactose, sem gás, etc.) escolhem as **3 melhores**, cada uma com justificativa.
+- Se o MiniLM não estiver disponível, existe uma alternativa mais simples, baseada em palavras (motor "léxico").
 
-O sistema consulta o inventário do usuário e considera as quantidades e datas de validade dos ingredientes. Os itens vencidos são desconsiderados, enquanto os que estão próximos do vencimento recebem prioridade.
+### 3.4 Serviços de apoio (`servicos/`)
 
-Essas informações, junto com o pedido do usuário, são utilizadas para montar a solicitação enviada ao modelo de linguagem. A receita gerada passa por verificações de estrutura e compatibilidade com os ingredientes disponíveis. Quando necessário, o sistema pode solicitar uma nova geração com orientações de correção.
-
-### 3.3. Recomendação de bebidas
-
-O módulo de bebidas utiliza um catálogo com 40 opções não alcoólicas. A recomendação considera características da refeição, similaridade entre descrições e regras de harmonização.
-
-O sistema utiliza o MiniLM para comparar os textos. Quando esse modelo não está disponível e a configuração permite, pode utilizar uma alternativa baseada em TF-IDF. Ao final, apresenta até três sugestões com suas justificativas.
-
-## 4. Modelos de inteligência artificial
-
-| Finalidade | Modelo | Função |
-|---|---|---|
-| Detecção de objetos | Florence-2-base | Localiza possíveis ingredientes na fotografia. |
-| Classificação de imagens | CLIP ViT-Base-Patch32 | Compara os recortes da imagem com descrições de ingredientes. |
-| Geração de receitas | SmolLM3-3B | Gera receitas a partir do pedido e do inventário. |
-| Similaridade de bebidas | paraphrase-multilingual-MiniLM-L12-v2 | Compara semanticamente a refeição com as descrições das bebidas. |
-
-Os modelos são obtidos do Hugging Face e utilizados localmente pela aplicação após sua preparação. A execução depende dos recursos disponíveis no computador e das bibliotecas necessárias.
-
-## 5. Armazenamento de dados
-
-O projeto utiliza SQLite para armazenar as informações da aplicação. O banco contempla dados relacionados a:
-
-- usuários e autenticação;
-- códigos de recuperação de senha;
-- ingredientes do inventário;
-- receitas geradas e salvas;
-- bebidas escolhidas pelos usuários.
-
-As informações de cada usuário são associadas à sua conta, permitindo consultar e administrar seu próprio inventário e histórico.
-
-## 6. Organização geral do projeto
-
-O código está dividido em pastas que agrupam responsabilidades semelhantes:
-
-| Diretório | Responsabilidade |
+| Arquivo | O que faz |
 |---|---|
-| `banco_dados/` | Criação do banco e operações de persistência. |
-| `percepcao/` | Identificação e classificação de ingredientes por imagem. |
-| `receitas/` | Geração, preparação e validação de receitas. |
-| `bebidas/` | Catálogo e recomendação de bebidas. |
-| `rotas/` | Endpoints da API utilizados pela aplicação. |
-| `servicos/` | Serviços compartilhados, processamento de imagens, modelos e tarefas em segundo plano. |
-| `templates/` | Páginas da interface web. |
-| `static/` | Estilos, scripts e imagens utilizados pela interface. |
-| `tests/` | Testes automatizados do projeto. |
+| `fila.py` | Fila de tarefas em segundo plano, para detecção e geração demoradas |
+| `imagem_servico.py` | Valida e reduz as fotos |
+| `modelos_servico.py` | Baixa e prepara os modelos |
+| `gerador_receita.py` | Carrega o SmolLM3 (quantização int8) para rodar em CPU |
+| `email_servico.py` | Envia o código de recuperação de senha pela Brevo |
+| `autenticacao_servico.py` | Apoio ao login e cadastro |
 
-## 7. Tecnologias utilizadas
+## 4. Modelos de IA
 
-- **Python e Flask:** desenvolvimento do backend e das rotas da aplicação.
-- **HTML, CSS, JavaScript e Jinja2:** construção da interface web.
-- **SQLite:** armazenamento dos dados.
-- **PyTorch e Transformers:** execução dos modelos de inteligência artificial.
-- **Hugging Face:** disponibilização dos modelos utilizados pelo projeto.
-- **Brevo:** envio de e-mails utilizados no processo de recuperação de senha.
+| Finalidade | Modelo |
+|---|---|
+| Detectar objetos | Florence-2-base |
+| Classificar ingredientes | CLIP ViT-B/32 |
+| Gerar receitas | SmolLM3-3B |
+| Comparar textos de bebidas | paraphrase-multilingual-MiniLM-L12-v2 |
 
-## 8. Considerações e limitações
+Os modelos são baixados na primeira execução para `modelos_huggingface/` e rodam **localmente, em CPU**. Detalhes das licenças em `LICENSES.md`.
 
-A identificação por fotografia é uma sugestão automática e deve ser conferida pelo usuário. A quantidade estimada pelo processo de percepção corresponde à contagem de objetos identificados, não a uma medição precisa de peso ou volume.
+## 5. Dados
 
-Atualmente, as recomendações disponibilizadas pela aplicação são de bebidas não alcoólicas. Além disso, as tarefas executadas em segundo plano são mantidas em memória; por isso, tarefas em andamento e seus resultados podem ser perdidos quando a aplicação é reiniciada.
+Usa **SQLite**, em `banco_dados/tastia.db`, criado automaticamente. Guarda usuários, códigos de recuperação de senha, inventário, receitas e bebidas escolhidas. Cada usuário só acessa os próprios dados. Veja `BANCO_DE_DADOS.md`.
 
-Para disponibilizar o sistema em produção, é necessário configurar uma chave secreta segura, proteger as credenciais de serviços externos e desativar o modo de depuração.
+## 6. Como as tarefas demoradas funcionam
 
+Detectar ingredientes e gerar receitas podem demorar. Por isso, a API aceita o modo assíncrono:
 
-## 4. Separação de responsabilidades no Flask
+1. O navegador envia o pedido com `assincrono: true`.
+2. O servidor responde na hora com um `tarefa_id` (código **202**).
+3. A tarefa roda na fila, **uma por vez**.
+4. O navegador pergunta de tempos em tempos à rota `status` até a tarefa terminar.
 
-As rotas de autenticação e de perfil foram separadas do ponto de entrada principal:
+Cada usuário pode ter **uma receita sendo gerada por vez**. A fila fica **na memória**: se o servidor reiniciar, as tarefas em andamento e os resultados se perdem.
 
-- `rotas/autenticacao.py`: cadastro, login, logout e recuperação/redefinição de senha.
-- `rotas/perfil.py`: consulta e atualização dos dados do perfil e confirmação de identidade.
-- `servicos/autenticacao_servico.py`: funções auxiliares relacionadas à autenticação e geração do hash do código de recuperação.
-- `servicos/email_servico.py`: integração de envio do código de recuperação por e-mail.
+## 7. Pastas do projeto
 
-O `app.py` registra os blueprints e mantém a inicialização da aplicação, os manipuladores de erro, as páginas principais e a inicialização dos serviços. Os endereços HTTP das telas foram preservados; somente os nomes internos dos endpoints de autenticação e perfil passaram a usar os respectivos blueprints.
+| Pasta | Responsabilidade |
+|---|---|
+| `banco_dados/` | Conexão e criação das tabelas |
+| `percepcao/` | Foto → ingredientes |
+| `receitas/` | Geração, validação e histórico de receitas |
+| `bebidas/` | Catálogo, regras e recomendador de bebidas |
+| `rotas/` | API (ingredientes, receitas, bebidas), login e perfil |
+| `servicos/` | Fila, imagens, e-mail e modelos |
+| `templates/` | Páginas HTML |
+| `static/` | CSS, JavaScript e imagens |
+| `tests/` | Testes automatizados |
+| `resultados_avaliacao/` | Relatórios das avaliações |
 
-## 5. Recursos locais e funcionamento sem CDN
+## 8. Tecnologias
 
-Os recursos visuais usados pela interface não dependem mais de servidores externos:
+- **Python e Flask:** backend e rotas
+- **HTML, Jinja2, JavaScript e Tailwind CSS:** interface
+- **SQLite:** dados
+- **PyTorch, Transformers e Sentence-Transformers:** modelos de IA
+- **Brevo:** e-mail de recuperação de senha
+- **pytest:** testes
 
-- Font Awesome está em `static/vendor/fontawesome/`, incluindo CSS, arquivos de fonte e licença.
-- Inter está em `static/fonts/`, com pesos locais de 400 a 800.
-- `static/css/fontes-locais.css` declara as fontes locais.
-- As páginas carregam o CSS local, em vez de consultar Google Fonts ou cdnjs.
+## 9. Limitações e cuidados
 
-A antiga referência tipográfica Sora foi alinhada à família local Inter para evitar uma chamada externa. Isso mantém a interface consistente e disponível sem internet, embora não seja uma cópia exata do desenho tipográfico Sora.
-
-## 6. Segurança e estados da interface
-
-- Os pontos de atribuição a `innerHTML` foram removidos. Conteúdos recebidos da API são apresentados por `textContent`, propriedades de formulário ou criação explícita de elementos.
-- O SVG decorativo dos cartões de bebidas é gerado a partir de um modelo fixo do próprio código; nenhum texto da API é interpretado como marcação.
-- As chamadas às rotas da API nas telas usam `static/js/api.js`, inclusive consultas, exclusões, atualizações e envio de imagens.
-- Quando a API responde com HTTP 401, o cliente redireciona para `/login`.
-- Formulários convencionais mostram estado de processamento; ações assíncronas das telas mantêm mensagens de carregamento, sucesso e erro.
-
-**Observação:** o envio real de e-mails de recuperação continua dependendo da conexão com a API externa de e-mail e das variáveis de ambiente correspondentes. Os recursos visuais (fontes e ícones) não dependem dessa conexão.
+- A foto gera **sugestões**, que o usuário precisa conferir. A quantidade é uma contagem de objetos, não um peso.
+- As receitas são geradas por IA e devem ser revisadas pelo usuário.
+- As bebidas são sempre sem álcool.
+- As tarefas em segundo plano se perdem ao reiniciar o servidor.
+- As chaves estrangeiras do SQLite não são aplicadas automaticamente. A integridade (por exemplo, apagar as bebidas de uma receita excluída) é feita pelo código das rotas.
+- Para colocar o sistema no ar é preciso: definir uma `SECRET_KEY` forte, proteger as chaves da Brevo, desativar o `debug` e resolver a licença dos pesos do CLIP.
