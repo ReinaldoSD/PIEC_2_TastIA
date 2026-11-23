@@ -9,7 +9,7 @@ DB_PATH = os.path.join(DB_DIR, 'tastia.db')
 MODELS_DIR = os.path.join(BASE_DIR, 'modelos_huggingface')
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'chave-padrao-fallback-insegura'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{DB_PATH}'
     
     MODELOS = {
