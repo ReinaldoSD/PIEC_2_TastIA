@@ -33,14 +33,13 @@ def _singular(p: str) -> str:
         return p[:-3] + "al"
     if p.endswith("eis"):
         return p[:-3] + "el"
-    if p.endswith(("res", "zes")) and len(p) > 4:  # colheres -> colher, nozes -> noz
+    if p.endswith(("res", "zes")) and len(p) > 4:
         return p[:-2]
     if p.endswith("s") and not p.endswith(("ss", "us", "is")):
         return p[:-1]
     return p
 
 
-# nomes regionais / grafias diferentes do mesmo alimento (já normalizados, no singular)
 SINONIMOS: Dict[str, str] = {
     "aipim": "mandioca",
     "macaxeira": "mandioca",
@@ -98,7 +97,6 @@ _PREPARO = _conjunto(
 
 DESCARTAR: Set[str] = _STOP | _UNIDADES | _PREPARO
 
-# Básicos de despensa permitidos: palavra principal -> qualificadores aceitos junto dela.
 BASICOS: Dict[str, Set[str]] = {
     "sal": _conjunto("grosso fino marinho refinado"),
     "agua": _conjunto("filtrada fervente mineral"),
@@ -114,9 +112,6 @@ BASICOS: Dict[str, Set[str]] = {
 }
 _TOKENS_BASICOS: Set[str] = set(BASICOS) | {q for qs in BASICOS.values() for q in qs}
 
-# Alimentos comuns. Servem para (a) achar alimentos citados no modo de preparo que o
-# usuário não tem e (b) distinguir "queijo parmesão" (outro alimento) de "peito de frango"
-# (só um corte do mesmo alimento).
 ALIMENTOS: Set[str] = _conjunto(
     "frango carne boi bovino porco suino linguica salsicha bacon presunto peixe atum sardinha "
     "salmao tilapia camarao ovo calabresa mortadela peru bife costela charque "
@@ -258,8 +253,8 @@ def _citados_no_texto(texto: str, cobertos: Set[str]) -> List[str]:
 class ResultadoValidacao:
     valido: bool
     estrutura_ok: bool
-    fora_do_inventario: List[str] = field(default_factory=list)   # listados em 'Ingredientes'
-    citados_no_preparo: List[str] = field(default_factory=list)   # citados no título/preparo
+    fora_do_inventario: List[str] = field(default_factory=list)
+    citados_no_preparo: List[str] = field(default_factory=list)
 
     @property
     def problemas(self) -> List[str]:
@@ -278,10 +273,7 @@ class ResultadoValidacao:
 
 
 def validar_receita(texto: str, inventario: Sequence[Union[str, Dict]]) -> ResultadoValidacao:
-    """Confere se a receita só cita ingredientes do inventário (ou básicos de despensa).
-
-    inventario: lista de nomes (str) ou de dicts com a chave 'nome'.
-    """
+    """Confere se a receita só cita ingredientes do inventário (ou básicos de despensa)."""
     nomes = [i["nome"] if isinstance(i, dict) else str(i) for i in inventario]
     inv_tokens = [t for t in (_tokens_inventario(n) for n in nomes) if t]
 
@@ -290,7 +282,7 @@ def validar_receita(texto: str, inventario: Sequence[Union[str, Dict]]) -> Resul
     n_itens = 0
     for linha in secoes["ing"]:
         if linha.rstrip().endswith(":") and not _RE_BULLET.match(linha):
-            continue  # subtítulo como "Para o molho:"
+            continue
         av = _avaliar_linha(linha, inv_tokens)
         n_itens += av["itens"]
         for nome in av["falhas"]:
@@ -302,7 +294,6 @@ def validar_receita(texto: str, inventario: Sequence[Union[str, Dict]]) -> Resul
     cobertos: Set[str] = set().union(*inv_tokens) | _TOKENS_BASICOS if inv_tokens else set(_TOKENS_BASICOS)
     texto_preparo = "\n".join([secoes["titulo"]] + secoes["prep"])
     citados = [c for c in _citados_no_texto(texto_preparo, cobertos)]
-    # não repete o que já foi apontado na lista de ingredientes
     ja = {_canon(w) for nome in fora for w in nome.split()}
     citados = [c for c in citados if _canon(c) not in ja]
 

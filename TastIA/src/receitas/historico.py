@@ -1,12 +1,18 @@
+"""Leitura das receitas salvas no banco para a página de histórico.
+
+A tabela `receitas` guarda só (pedido, conteudo, criado_em); as bebidas escolhidas ficam em
+`bebidas_sugeridas`, ligadas à receita por `receita_id` (ou sem receita, quando salvas sozinhas). Título, tempo, porções,
+ingredientes, passos e categoria são extraídos do texto da receita na hora de listar,
+então não é preciso mudar o banco de ninguém.
+"""
 import re
 from typing import Dict, List
 
-from receitas.formatador import formatar_receita
+from receitas.formatador import formatar_receita, limpar_titulo
 from receitas.validador import _dividir_secoes, normalizar_texto
 
 CATEGORIAS = ["Café da manhã", "Almoço", "Jantar", "Lanche", "Sobremesa", "Outros"]
 
-# 1ª passada: nome explícito da refeição. 2ª passada: palavras que sugerem a categoria.
 _EXPLICITAS = [
     ("Café da manhã", r"\bcafe da manha\b|\bdesjejum\b"),
     ("Almoço", r"\balmoc\w*"),
@@ -22,6 +28,7 @@ _SUGERIDAS = [
 
 
 def inferir_categoria(pedido: str, titulo: str = "") -> str:
+    """Chuta a categoria pelo pedido (e, se faltar, pelo título). É uma heurística simples."""
     textos = [normalizar_texto(t) for t in (pedido or "", titulo or "") if t]
     for regras in (_EXPLICITAS, _SUGERIDAS):
         for texto in textos:
@@ -37,6 +44,7 @@ def _limpar_item(linha: str) -> str:
 
 
 def _minutos(texto: str):
+    """Lê '**Tempo de preparo:** 1 hora e 30 minutos' -> 90. Devolve None se não achar."""
     m = re.search(r"tempo[^\n0-9]{0,30}([^\n]*)", normalizar_texto(texto))
     if not m:
         return None
@@ -55,12 +63,13 @@ def _porcoes(texto: str):
 
 
 def interpretar_receita(conteudo: str, pedido: str = "") -> Dict:
+    """Quebra o texto da receita em partes para a página mostrar."""
     secoes = _dividir_secoes(conteudo or "")
     ingredientes: List[str] = [
         _limpar_item(l) for l in secoes["ing"] if not l.rstrip().endswith(":")
     ]
     preparo: List[str] = [_limpar_item(l) for l in secoes["prep"]]
-    titulo = re.sub(r"^[#*\s]+|[*\s]+$", "", secoes["titulo"]) or (pedido or "Receita")[:60]
+    titulo = limpar_titulo(re.sub(r"^[#*\s]+|[*\s]+$", "", secoes["titulo"])) or (pedido or "Receita")[:60]
     return {
         "titulo": titulo,
         "tempo_min": _minutos(conteudo or ""),
@@ -72,6 +81,7 @@ def interpretar_receita(conteudo: str, pedido: str = "") -> Dict:
 
 
 def _iso_utc(criado_em) -> str:
+    """O SQLite grava CURRENT_TIMESTAMP em UTC como 'AAAA-MM-DD HH:MM:SS'."""
     texto = str(criado_em or "")
     if len(texto) == 19 and "T" not in texto:
         return texto.replace(" ", "T") + "Z"
@@ -79,6 +89,7 @@ def _iso_utc(criado_em) -> str:
 
 
 def montar_item_bebida(linha) -> Dict:
+    """Converte uma linha de `bebidas_sugeridas` no JSON usado pela página de histórico."""
     return {
         "id": linha["id"],
         "nome": linha["nome_bebida"],
@@ -90,8 +101,11 @@ def montar_item_bebida(linha) -> Dict:
 
 
 def montar_item_historico(linha, bebidas=None) -> Dict:
-    # receitas antigas foram salvas com '##' e '**': limpa na hora de mostrar, sem mexer no banco
-    texto = formatar_receita(linha["conteudo"], linha["pedido"])
+    """Converte uma linha da tabela `receitas` no JSON usado pela página de histórico.
+
+    bebidas: bebidas já escolhidas para esta receita (lista de dicts de `montar_item_bebida`).
+    """
+    texto = formatar_receita(linha["conteudo"])
     item = interpretar_receita(texto, linha["pedido"])
     item.update({
         "id": linha["id"],
